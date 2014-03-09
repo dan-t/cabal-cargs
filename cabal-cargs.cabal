@@ -1,0 +1,40 @@
+name: cabal-cargs
+version: 0.1
+cabal-version: >=1.9.2
+build-type: Simple
+license: BSD3
+license-file: LICENSE
+maintainer: daniel.trstenjak@gmail.com
+synopsis: A command line program for extracting compiler arguments from a cabal file.
+description: A command line program for extracting compiler arguments from a cabal file.
+category: Utils
+author: Daniel Trstenjak
+data-dir: ""
+extra-source-files: README.md
+ 
+source-repository head
+    type: git
+    location: https://github.com/dan-t/cabal-cargs
+ 
+library
+    build-depends: base >=3 && <5, cmdargs >=0.10.5 && <0.11,
+                   lens >=4.0.1 && <4.1, directory, strict >=0.3.2 && <0.4,
+                   transformers >=0.3.0.0 && <0.4, either >=4.1.1 && <4.2,
+                   text, system-filepath, system-fileio, split,
+                   Cabal >=1.18.0 && <1.19
+    exposed-modules: CabalCargs.Args CabalCargs.Field CabalCargs.Fields
+                     CabalCargs.Formatting CabalCargs.Format 
+                     CabalCargs.CargsSpec CabalCargs.Sections 
+                     CabalCargs.CompilerArgs
+    buildable: True
+    cpp-options: -DCABAL
+    hs-source-dirs: src
+    other-modules: Paths_cabal_cargs
+    ghc-options: -W
+
+executable cabal-cargs
+    build-depends: base >=3 && <5, either >=4.1.1 && <4.2, cabal-cargs
+    main-is: Main.hs
+    buildable: True
+    hs-source-dirs: exe
+    ghc-options: -W
