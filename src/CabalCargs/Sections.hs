@@ -25,7 +25,7 @@ data Sections = AllSections        -- ^ all sections are considered
 -- | Convert the command line arguments into 'Sections'.
 sections :: Args -> Sections
 sections args 
-   | ss@(_:_) <- concat [ if (A.library args) then [Library] else []
+   | ss@(_:_) <- concat [ [Library | A.library args]
                         , map Executable (A.executable args)
                         , map TestSuite (A.testSuite args)
                         , map Benchmark (A.benchmark args)
