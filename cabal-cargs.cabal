@@ -25,7 +25,7 @@ library
     exposed-modules: CabalCargs.Args CabalCargs.Field CabalCargs.Fields
                      CabalCargs.Formatting CabalCargs.Format 
                      CabalCargs.CargsSpec CabalCargs.Sections 
-                     CabalCargs.CompilerArgs
+                     CabalCargs.CompilerArgs CabalCargs.Lenses
     buildable: True
     cpp-options: -DCABAL
     hs-source-dirs: src

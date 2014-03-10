@@ -2,13 +2,16 @@
 
 module CabalCargs.CargsSpec
    ( CargsSpec(..)
-   , cargsSpec
+   , fromCabalFile
+   , fromSourceFile
+   , fromCmdArgs
    ) where
 
 import Distribution.PackageDescription (GenericPackageDescription)
 import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
 import CabalCargs.Args (Args)
+import qualified CabalCargs.Lenses as L
 import qualified CabalCargs.Args as A
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Fields as F
@@ -17,6 +20,7 @@ import Control.Monad.Trans.Either (EitherT, left, right)
 import Control.Monad.IO.Class
 import Control.Monad (filterM)
 import Control.Applicative ((<$>))
+import Control.Lens
 import System.Directory (getCurrentDirectory)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
@@ -116,31 +120,20 @@ findSections srcFile cabalFile pkgDescrp = do
 type HsSourceDirs = [FP.FilePath]
 -- | Returns the hs-source-dirs of all sections present in the given package description.
 allHsSourceDirs :: GenericPackageDescription -> [(S.Section, HsSourceDirs)]
-allHsSourceDirs pkgDescrp =
-   concat [ libraryHsSourceDirs
-          , exeHsSourceDirs
-          , testHsSourceDirs
-          , benchmHsSourceDirs
-          ]
+allHsSourceDirs pkgDescrp = map fromBuildInfo buildInfos
    where
-      libraryHsSourceDirs
-         | Just lib <- PD.condLibrary pkgDescrp
-         = [ (S.Library, toFPs . PD.hsSourceDirs . PD.libBuildInfo . PD.condTreeData $ lib) ]
+      fromBuildInfo (section, buildInfo) =
+         (section, toFPs $ PD.hsSourceDirs (pkgDescrp ^. buildInfo))
 
-         | otherwise
-         = []
+      buildInfos = concat [ [ (S.Library, L.buildInfoOfLib) | isJust $ PD.condLibrary pkgDescrp ]
+                          , map fromExe (PD.condExecutables pkgDescrp)
+                          , map fromTest (PD.condTestSuites pkgDescrp)
+                          , map fromBenchm (PD.condBenchmarks pkgDescrp)
+                          ]
 
-      exeHsSourceDirs = map fromExe $ PD.condExecutables pkgDescrp
-         where fromExe (name, exe) =
-                  (S.Executable name, toFPs . PD.hsSourceDirs . PD.buildInfo . PD.condTreeData $ exe)
-
-      testHsSourceDirs = map fromTest $ PD.condTestSuites pkgDescrp
-         where fromTest (name, test) = 
-                  (S.TestSuite name, toFPs . PD.hsSourceDirs . PD.testBuildInfo. PD.condTreeData $ test)
-
-      benchmHsSourceDirs = map fromBenchm $ PD.condBenchmarks pkgDescrp
-         where fromBenchm (name, benchm) =
-                  (S.Benchmark name, toFPs . PD.hsSourceDirs . PD.benchmarkBuildInfo . PD.condTreeData $ benchm)
+      fromExe (name, _)    = (S.Executable name, L.buildInfoOfExe name)
+      fromTest (name, _)   = (S.TestSuite name, L.buildInfoOfTest name)
+      fromBenchm (name, _) = (S.Benchmark name, L.buildInfoOfBenchm name)
 
       toFPs = map FP.decodeString
 
