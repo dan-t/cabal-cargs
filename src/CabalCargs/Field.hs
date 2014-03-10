@@ -9,11 +9,11 @@ import Data.Data (Data, Typeable)
 -- | A compiler relevant field from the cabal file.
 data Field = Hs_Source_Dirs
            | Ghc_Options
-           | Extensions
+           | Default_Extensions
 
            | Cpp_Options
            | C_Sources
-           | CC_Options
+           | Cc_Options
 
            | Extra_Lib_Dirs
            | Extra_Libraries
