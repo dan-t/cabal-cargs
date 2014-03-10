@@ -136,6 +136,9 @@ findSections srcFile cabalFile pkgDescrp = do
    return $ map fst sections
 
    where
+      fittingSection srcFile cabalDir (_, []) =
+         isJust $ FP.stripPrefix (cabalDir </> FP.empty) srcFile
+
       fittingSection srcFile cabalDir (_, srcDirs) = any samePrefix srcDirs
          where samePrefix srcDir = isJust $ FP.stripPrefix (cabalDir </> srcDir </> FP.empty) srcFile
 
