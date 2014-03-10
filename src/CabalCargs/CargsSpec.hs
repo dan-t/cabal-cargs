@@ -44,53 +44,76 @@ data CargsSpec = CargsSpec
 type Error = String
 io = liftIO 
 
+
+-- | Create a 'CargsSpec' from the given cabal file, sections and fields.
+--
+--   If a cabal sandbox is present in the directory of the cabal file, then
+--   the path to its package database is also returned.
+fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO CargsSpec
+fromCabalFile file sections fields = do
+   pkgDB     <- io $ findPackageDB file
+   pkgDescrp <- packageDescription file
+   right $ CargsSpec
+      { sections     = sections
+      , fields       = fields
+      , cabalPackage = pkgDescrp
+      , cabalFile    = file
+      , packageDB    = pkgDB
+      }
+
+
+-- | Create a 'CargsSpec' from the given source file and fields.
+--
+--   Starting at the directory of the source file a cabal file is searched
+--   upwards the directory tree.
+--
+--   The found cabal file is searched for a fitting section for the source file.
+--   If no fitting section could be found, then all sections are used.
+--
+--   If a cabal sandbox is present in the directory of the cabal file, then
+--   the path to its package database is also returned.
+fromSourceFile :: FilePath -> F.Fields -> EitherT Error IO CargsSpec
+fromSourceFile file fields = do
+   cabalFile   <- findCabalFile file
+   pkgDB       <- io $ findPackageDB cabalFile
+   pkgDescrp   <- packageDescription cabalFile
+   srcSections <- io $ findSections file cabalFile pkgDescrp
+   right $ CargsSpec
+      { sections = combineSections S.AllSections srcSections
+      , fields   = fields
+      , cabalPackage = pkgDescrp
+      , cabalFile    = cabalFile
+      , packageDB    = pkgDB
+      }
+
+
 -- | Create a 'CargsSpec' by the command line arguments given to 'cabal-cargs'.
-cargsSpec :: Args -> EitherT Error IO CargsSpec
-cargsSpec args
+--
+--   Depending on the command line arguments 'fromCmdArgs' might behave like
+--   'fromCabalFile', if only a cabal file was given, like 'fromSourceFile',
+--   if only a source file was given or like a mix of both, if a cabal file
+--   and a source file have been given.
+fromCmdArgs :: Args -> EitherT Error IO CargsSpec
+fromCmdArgs args
    | Just cabalFile <- A.cabalFile args = do
-      pkgDB       <- io $ findPackageDB cabalFile
-      pkgDescrp   <- packageDescription cabalFile
+      spec        <- fromCabalFile cabalFile (S.sections args) (F.fields args)
       srcSections <- io $ case A.sourceFile args of
-                               Just srcFile -> findSections srcFile cabalFile pkgDescrp
+                               Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
                                _            -> return []
-      right $ CargsSpec 
-         { sections     = combineSections (S.sections args) srcSections
-         , fields       = F.fields args
-         , cabalPackage = pkgDescrp
-         , cabalFile    = cabalFile
-         , packageDB    = pkgDB
-         }
+
+      right $ spec { sections = combineSections (sections spec) srcSections }
 
    | Just sourceFile <- A.sourceFile args = do
-      cabalFile   <- findCabalFile sourceFile
-      pkgDB       <- io $ findPackageDB cabalFile
-      pkgDescrp   <- packageDescription cabalFile
-      srcSections <- io $ findSections sourceFile cabalFile pkgDescrp
-      right $ CargsSpec 
-         { sections     = combineSections (S.sections args) srcSections
-         , fields       = F.fields args
-         , cabalPackage = pkgDescrp
-         , cabalFile    = cabalFile
-         , packageDB    = pkgDB
-         }
+      spec <- fromSourceFile sourceFile (F.fields args)
+      let specSections = case sections spec of
+                              S.Sections ss -> ss
+                              _             -> []
+
+      right $ spec { sections = combineSections (S.sections args) specSections }
 
    | otherwise = do
-      curDir    <- io $ getCurrentDirectory
-      cabalFile <- findCabalFile curDir
-      pkgDB     <- io $ findPackageDB cabalFile
-      pkgDescrp <- packageDescription cabalFile
-      right $ CargsSpec 
-         { sections     = S.sections args
-         , fields       = F.fields args
-         , cabalPackage = pkgDescrp
-         , cabalFile    = cabalFile
-         , packageDB    = pkgDB
-         }
-
-   where
-      combineSections S.AllSections     [] = S.AllSections
-      combineSections S.AllSections     ss = S.Sections ss
-      combineSections (S.Sections ss1) ss2 = S.Sections $ nub $ ss1 ++ ss2
+      curDir <- io $ getCurrentDirectory
+      fromCabalFile curDir (S.sections args) (F.fields args)
 
 
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
@@ -196,3 +219,9 @@ absoluteDirectory = FS.canonicalizePath . FP.directory . FP.decodeString
 
 absoluteFile :: FilePath -> IO FP.FilePath
 absoluteFile = FS.canonicalizePath . FP.decodeString
+
+
+combineSections :: S.Sections -> [S.Section] -> S.Sections
+combineSections S.AllSections     [] = S.AllSections
+combineSections S.AllSections     ss = S.Sections ss
+combineSections (S.Sections ss1) ss2 = S.Sections $ nub $ ss1 ++ ss2
