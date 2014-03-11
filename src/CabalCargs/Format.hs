@@ -13,7 +13,7 @@ import Filesystem.Path ((</>))
 
 format :: Formatting -> CompilerArgs -> [String]
 format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
-                          , ["-i" ++ prependCabalDir cargs "dist/build/autogen"]
+                          , ["-i" ++ autogenDir]
                           , ghcOptions cargs
                           , map ("-X" ++) (defaultExtensions cargs)
                           , map ("-optP" ++) (cppOptions cargs)
@@ -23,9 +23,14 @@ format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
                           , map ("-l" ++) (extraLibraries cargs)
 --                          , map ("   " ++) (ldOptions cargs)
                           , map ("-I" ++) (includeDirs cargs)
+                          , ["-I" ++ autogenDir]
 --                          , map ("   " ++) (includes cargs)
                           , maybe [""] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
                           ]
+
+   where
+      autogenDir = prependCabalDir cargs "dist/build/autogen"
+
 
 format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
    where
