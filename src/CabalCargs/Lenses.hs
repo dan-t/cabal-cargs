@@ -42,7 +42,6 @@ makeLensesFor [ ("condTreeData", "condTreeDataL")
 
 makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               , ("options"          , "optionsL")
-              , ("defaultExtensions", "defaultExtensionsL")
               , ("cppOptions"       , "cppOptionsL")
               , ("cSources"         , "cSourcesL")
               , ("ccOptions"        , "ccOptionsL")
@@ -93,7 +92,7 @@ allBuildInfos = biplate
 field :: F.Field -> Traversal' BuildInfo [String]
 field F.Hs_Source_Dirs     = hsSourceDirsL
 field F.Ghc_Options        = optionsL . traversed . filtered ((== GHC) . fst) . _2
-field F.Default_Extensions = defaultExtensionsL . extsToStrings
+field F.Default_Extensions = oldAndDefaultExtensionsL . extsToStrings
 field F.Cpp_Options        = cppOptionsL
 field F.C_Sources          = cSourcesL
 field F.Cc_Options         = ccOptionsL
@@ -103,6 +102,13 @@ field F.Ld_Options         = ldOptionsL
 field F.Include_Dirs       = includeDirsL
 field F.Includes           = includesL
 field F.Package_Db         = error "Unexpected argument 'F.Package_Db' for 'CabalCargs.Lenses.field'!"
+
+
+oldAndDefaultExtensionsL :: Lens' BuildInfo [Extension]
+oldAndDefaultExtensionsL = lens getter setter
+   where
+      getter buildInfo      = (oldExtensions buildInfo) ++ (defaultExtensions buildInfo)
+      setter buildInfo exts = buildInfo { defaultExtensions = exts }
 
 
 extsToStrings :: Iso' [Extension] [String]
