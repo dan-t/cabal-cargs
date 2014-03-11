@@ -5,8 +5,8 @@ module CabalCargs.CompilerArgs
    , compilerArgs
    ) where
 
-import CabalCargs.CargsSpec (CargsSpec)
-import qualified CabalCargs.CargsSpec as Spec
+import CabalCargs.Spec (Spec)
+import qualified CabalCargs.Spec as Spec
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Field as F
 import qualified CabalCargs.Fields as Fs
@@ -49,8 +49,8 @@ makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               ] ''CompilerArgs
 
 
--- | Collect the compiler args specified by 'CargsSpec'.
-compilerArgs :: CargsSpec -> CompilerArgs
+-- | Collect the compiler args specified by 'Spec'.
+compilerArgs :: Spec -> CompilerArgs
 compilerArgs spec =
    case Spec.sections spec of
         S.Sections sections -> absolutePaths $ foldl' collectFromSection defaultCompilerArgs sections

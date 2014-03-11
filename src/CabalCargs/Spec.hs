@@ -1,7 +1,7 @@
 {-# Language PatternGuards #-}
 
-module CabalCargs.CargsSpec
-   ( CargsSpec(..)
+module CabalCargs.Spec
+   ( Spec(..)
    , fromCabalFile
    , fromSourceFile
    , fromCmdArgs
@@ -32,7 +32,7 @@ import Data.Maybe (isJust)
 
 
 -- | Specifies which compiler args from which sections should be collected.
-data CargsSpec = CargsSpec 
+data Spec = Spec 
    { sections     :: S.Sections                -- ^ the sections used for collecting the compiler args
    , fields       :: F.Fields                  -- ^ for these fields compiler args are collected
    , cabalPackage :: GenericPackageDescription -- ^ the package description of the read in cabal file
@@ -45,15 +45,15 @@ type Error = String
 io = liftIO 
 
 
--- | Create a 'CargsSpec' from the given cabal file, sections and fields.
+-- | Create a 'Spec' from the given cabal file, sections and fields.
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
-fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO CargsSpec
+fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO Spec
 fromCabalFile file sections fields = do
    pkgDB     <- io $ findPackageDB file
    pkgDescrp <- packageDescription file
-   right $ CargsSpec
+   right $ Spec
       { sections     = sections
       , fields       = fields
       , cabalPackage = pkgDescrp
@@ -62,7 +62,7 @@ fromCabalFile file sections fields = do
       }
 
 
--- | Create a 'CargsSpec' from the given source file and fields.
+-- | Create a 'Spec' from the given source file and fields.
 --
 --   Starting at the directory of the source file a cabal file is searched
 --   upwards the directory tree.
@@ -72,13 +72,13 @@ fromCabalFile file sections fields = do
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
-fromSourceFile :: FilePath -> F.Fields -> EitherT Error IO CargsSpec
+fromSourceFile :: FilePath -> F.Fields -> EitherT Error IO Spec
 fromSourceFile file fields = do
    cabalFile   <- findCabalFile file
    pkgDB       <- io $ findPackageDB cabalFile
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
-   right $ CargsSpec
+   right $ Spec
       { sections = combineSections S.AllSections srcSections
       , fields   = fields
       , cabalPackage = pkgDescrp
@@ -87,13 +87,13 @@ fromSourceFile file fields = do
       }
 
 
--- | Create a 'CargsSpec' by the command line arguments given to 'cabal-cargs'.
+-- | Create a 'Spec' by the command line arguments given to 'cabal-cargs'.
 --
 --   Depending on the command line arguments 'fromCmdArgs' might behave like
 --   'fromCabalFile', if only a cabal file was given, like 'fromSourceFile',
 --   if only a source file was given or like a mix of both, if a cabal file
 --   and a source file have been given.
-fromCmdArgs :: Args -> EitherT Error IO CargsSpec
+fromCmdArgs :: Args -> EitherT Error IO Spec
 fromCmdArgs args
    | Just cabalFile <- A.cabalFile args = do
       spec        <- fromCabalFile cabalFile (S.sections args) (F.fields args)

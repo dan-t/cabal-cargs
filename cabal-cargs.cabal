@@ -24,7 +24,7 @@ library
                    Cabal >=1.18.0 && <1.19
     exposed-modules: CabalCargs.Args CabalCargs.Field CabalCargs.Fields
                      CabalCargs.Formatting CabalCargs.Format 
-                     CabalCargs.CargsSpec CabalCargs.Sections 
+                     CabalCargs.Spec CabalCargs.Sections 
                      CabalCargs.CompilerArgs CabalCargs.Lenses
     buildable: True
     cpp-options: -DCABAL
