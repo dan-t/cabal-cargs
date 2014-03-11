@@ -17,6 +17,7 @@ import Control.Lens
 import Data.Data.Lens (biplate)
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Field as F
+import qualified CabalCargs.Fields as Fs
 
 makeLensesFor [ ("condLibrary"    , "condLibraryL")
               , ("condExecutables", "condExecutablesL")
