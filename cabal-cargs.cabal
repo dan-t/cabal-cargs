@@ -33,7 +33,7 @@ library
     ghc-options: -W
 
 executable cabal-cargs
-    build-depends: base >=3 && <5, either >=4.1.1 && <4.2, cabal-cargs
+    build-depends: base >=3 && <5, cabal-cargs
     main-is: Main.hs
     buildable: True
     hs-source-dirs: exe
