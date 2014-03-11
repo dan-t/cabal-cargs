@@ -227,4 +227,4 @@ absoluteFile = FS.canonicalizePath . FP.decodeString
 combineSections :: S.Sections -> [S.Section] -> S.Sections
 combineSections S.AllSections     [] = S.AllSections
 combineSections S.AllSections     ss = S.Sections ss
-combineSections (S.Sections ss1) ss2 = S.Sections $ nub $ ss1 ++ ss2
+combineSections (S.Sections ss)    _ = S.Sections ss
