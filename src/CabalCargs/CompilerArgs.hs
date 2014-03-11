@@ -36,6 +36,7 @@ data CompilerArgs = CompilerArgs
    , ldOptions         :: [String]
    , includeDirs       :: [FilePath]
    , includes          :: [String]
+   , cabalFile         :: FilePath       -- ^ path to the used cabal file
    , packageDB         :: Maybe FilePath -- ^ the path to the package database of the cabal sandbox
    }
    deriving (Show, Eq)
@@ -94,10 +95,15 @@ fromCmdArgs args = runEitherT $ do
 fromSpec :: Spec -> CompilerArgs
 fromSpec spec =
    case Spec.sections spec of
-        S.Sections sections -> absolutePaths $ foldl' collectFromSection defaultCompilerArgs sections
-        S.AllSections       -> absolutePaths $ collectFields L.allBuildInfos defaultCompilerArgs
+        S.Sections sections ->
+           setCabalFile $ absolutePaths $ foldl' collectFromSection defaultCompilerArgs sections
+
+        S.AllSections ->
+           setCabalFile $ absolutePaths $ collectFields L.allBuildInfos defaultCompilerArgs
 
    where
+      setCabalFile cargs = cargs { cabalFile = Spec.cabalFile spec }
+
       absolutePaths cargs =
          cargs & hsSourceDirsL %~ map prependCabalDir
                & cSourcesL     %~ map prependCabalDir
@@ -166,5 +172,6 @@ defaultCompilerArgs = CompilerArgs
    , ldOptions         = []
    , includeDirs       = []
    , includes          = []
+   , cabalFile         = ""
    , packageDB         = Nothing
    }

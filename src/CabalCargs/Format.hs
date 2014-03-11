@@ -7,6 +7,8 @@ module CabalCargs.Format
 import CabalCargs.CompilerArgs (CompilerArgs(..))
 import CabalCargs.Formatting (Formatting(..))
 import Data.Maybe (maybeToList)
+import qualified Filesystem.Path.CurrentOS as FP
+import Filesystem.Path ((</>))
 
 
 format :: Formatting -> CompilerArgs -> [String]
@@ -26,11 +28,10 @@ format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
 
 format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
    where
-      socket | dirs@(_:_) <- hsSourceDirs cargs
-             = ["--socket=" ++ head dirs ++ "/.hdevtools.sock"]
-
-             | otherwise
-             = []
+      socket     = ["--socket=" ++ socketPath]
+      socketPath = FP.encodeString $ cabalDir </> socketFile
+      socketFile = FP.decodeString ".hdevtools.sock"
+      cabalDir   = FP.directory $ FP.decodeString (cabalFile cargs)
 
 format Pure cargs = concat [ hsSourceDirs cargs
                            , ghcOptions cargs
