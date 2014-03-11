@@ -26,7 +26,7 @@ import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
 import qualified Filesystem as FS
 import qualified Data.Text as T
-import Data.List (find, nub)
+import Data.List (find)
 import Data.List.Split (splitOn)
 import Data.Maybe (isJust)
 
@@ -53,11 +53,12 @@ fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO Spec
 fromCabalFile file sections fields = do
    pkgDB     <- io $ findPackageDB file
    pkgDescrp <- packageDescription file
+   absFile   <- FP.encodeString <$> (io $ absoluteFile file)
    right $ Spec
       { sections     = sections
       , fields       = fields
       , cabalPackage = pkgDescrp
-      , cabalFile    = file
+      , cabalFile    = absFile
       , packageDB    = pkgDB
       }
 
