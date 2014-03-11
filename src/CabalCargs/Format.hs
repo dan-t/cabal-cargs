@@ -13,6 +13,7 @@ import Filesystem.Path ((</>))
 
 format :: Formatting -> CompilerArgs -> [String]
 format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
+                          , ["-i" ++ prependCabalDir cargs "dist/build/autogen"]
                           , ghcOptions cargs
                           , map ("-X" ++) (defaultExtensions cargs)
                           , map ("-optP" ++) (cppOptions cargs)
@@ -23,15 +24,12 @@ format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
 --                          , map ("   " ++) (ldOptions cargs)
                           , map ("-I" ++) (includeDirs cargs)
 --                          , map ("   " ++) (includes cargs)
-                          , maybe [""] (\db -> ["-package-db " ++ db]) (packageDB cargs)
+                          , maybe [""] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
                           ]
 
 format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
    where
-      socket     = ["--socket=" ++ socketPath]
-      socketPath = FP.encodeString $ cabalDir </> socketFile
-      socketFile = FP.decodeString ".hdevtools.sock"
-      cabalDir   = FP.directory $ FP.decodeString (cabalFile cargs)
+      socket = ["--socket=" ++ prependCabalDir cargs ".hdevtools.sock"]
 
 format Pure cargs = concat [ hsSourceDirs cargs
                            , ghcOptions cargs
@@ -46,3 +44,9 @@ format Pure cargs = concat [ hsSourceDirs cargs
                            , includes cargs
                            , maybeToList $ packageDB cargs
                            ]
+
+
+prependCabalDir :: CompilerArgs -> String -> String
+prependCabalDir cargs path = FP.encodeString $ cabalDir </> (FP.decodeString path)
+   where
+      cabalDir = FP.directory $ FP.decodeString (cabalFile cargs)
