@@ -113,8 +113,9 @@ fromCmdArgs args
       right $ spec { sections = combineSections (S.sections args) specSections }
 
    | otherwise = do
-      curDir <- io $ getCurrentDirectory
-      fromCabalFile curDir (S.sections args) (F.fields args)
+      curDir    <- io $ getCurrentDirectory
+      cabalFile <- findCabalFile (curDir ++ "/")
+      fromCabalFile cabalFile (S.sections args) (F.fields args)
 
 
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
