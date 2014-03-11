@@ -13,12 +13,12 @@ main :: IO ()
 main = do
    cmdArgs <- CmdArgs.get
    let formatting = CmdArgs.format cmdArgs
-   (either withError (withCargs formatting)) =<< (CompilerArgs.fromCmdArgs cmdArgs)
-   where
-      withError error = do
-         hPutStrLn stderr ("cabal-cargs: " ++ error)
-         exitFailure
+   cargs   <- CompilerArgs.fromCmdArgs cmdArgs
+   case cargs of
+        Left error -> do
+           hPutStrLn stderr ("cabal-cargs: " ++ error)
+           exitFailure
 
-      withCargs formatting cargs = do
-         putStr $ intercalate " " $ F.format formatting cargs
-         exitSuccess
+        Right cargs_ -> do
+           putStr $ intercalate " " $ F.format formatting cargs_
+           exitSuccess
