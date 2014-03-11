@@ -7,6 +7,7 @@ module CabalCargs.Format
 import CabalCargs.CompilerArgs (CompilerArgs(..))
 import CabalCargs.Formatting (Formatting(..))
 import Data.Maybe (maybeToList)
+import Data.List (foldl')
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path ((</>))
 
@@ -17,18 +18,22 @@ format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
                           , ghcOptions cargs
                           , map ("-X" ++) (defaultExtensions cargs)
                           , map ("-optP" ++) (cppOptions cargs)
---                          , map ("   " ++) (cSources cargs)
                           , map ("-optc" ++) (ccOptions cargs)
                           , map ("-L" ++) (extraLibDirs cargs)
                           , map ("-l" ++) (extraLibraries cargs)
---                          , map ("   " ++) (ldOptions cargs)
                           , map ("-I" ++) (includeDirs cargs)
                           , ["-I" ++ autogenDir]
---                          , map ("   " ++) (includes cargs)
+                          , ["-optP-include", "-optP" ++ autogenDir ++ "/cabal_macros.h"]
+                          , ghcIncludes
                           , maybe [""] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
                           ]
 
    where
+      ghcIncludes =
+         reverse $ foldl' addInclude [] (includes cargs)
+         where
+            addInclude incs inc = ("-optP" ++ inc) : ("-optP-include") : incs
+
       autogenDir = prependCabalDir cargs "dist/build/autogen"
 
 
