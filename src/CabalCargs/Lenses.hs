@@ -17,28 +17,12 @@ import Control.Lens
 import Data.Data.Lens (biplate)
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Field as F
-import qualified CabalCargs.Fields as Fs
 
 makeLensesFor [ ("condLibrary"    , "condLibraryL")
               , ("condExecutables", "condExecutablesL")
               , ("condTestSuites" , "condTestSuitesL")
               , ("condBenchmarks" , "condBenchmarksL")
               ] ''GenericPackageDescription
-
-makeLensesFor [ ("libBuildInfo", "libBuildInfoL")
-              ] ''Library
-
-makeLensesFor [ ("buildInfo", "buildInfoL")
-              ] ''Executable
-
-makeLensesFor [ ("testBuildInfo", "testBuildInfoL")
-              ] ''TestSuite
-
-makeLensesFor [ ("benchmarkBuildInfo", "benchmarkBuildInfoL")
-              ] ''Benchmark
-
-makeLensesFor [ ("condTreeData", "condTreeDataL")
-              ] ''CondTree
 
 makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               , ("options"          , "optionsL")
