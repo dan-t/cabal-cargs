@@ -8,6 +8,8 @@ module CabalCargs.Lenses
    , buildInfoOf
    , allBuildInfos
    , field
+   , defaultLang
+   , langToString
    ) where
 
 import Distribution.PackageDescription
@@ -26,6 +28,7 @@ makeLensesFor [ ("condLibrary"    , "condLibraryL")
 
 makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               , ("options"          , "optionsL")
+              , ("defaultLanguage"  , "defaultLang")
               , ("cppOptions"       , "cppOptionsL")
               , ("cSources"         , "cSourcesL")
               , ("ccOptions"        , "ccOptionsL")
@@ -74,18 +77,22 @@ allBuildInfos = biplate
 
 
 field :: F.Field -> Traversal' BuildInfo [String]
-field F.Hs_Source_Dirs     = hsSourceDirsL
-field F.Ghc_Options        = optionsL . traversed . filtered ((== GHC) . fst) . _2
-field F.Default_Extensions = oldAndDefaultExtensionsL . extsToStrings
-field F.Cpp_Options        = cppOptionsL
-field F.C_Sources          = cSourcesL
-field F.Cc_Options         = ccOptionsL
-field F.Extra_Lib_Dirs     = extraLibDirsL
-field F.Extra_Libraries    = extraLibsL
-field F.Ld_Options         = ldOptionsL
-field F.Include_Dirs       = includeDirsL
-field F.Includes           = includesL
-field F.Package_Db         = error "Unexpected argument 'F.Package_Db' for 'CabalCargs.Lenses.field'!"
+field F.Hs_Source_Dirs         = hsSourceDirsL
+field F.Ghc_Options            = optionsL . traversed . filtered ((== GHC) . fst) . _2
+field F.Default_Extensions     = oldAndDefaultExtensionsL . extsToStrings
+field F.Default_Language       = error $ "Unexpected argument 'Default_Language' for 'CabalCargs.Lenses.field'!"
+field F.Cpp_Options            = cppOptionsL
+field F.C_Sources              = cSourcesL
+field F.Cc_Options             = ccOptionsL
+field F.Extra_Lib_Dirs         = extraLibDirsL
+field F.Extra_Libraries        = extraLibsL
+field F.Ld_Options             = ldOptionsL
+field F.Include_Dirs           = includeDirsL
+field F.Includes               = includesL
+field F.Package_Db             = error $ "Unexpected argument 'Package_Db' for 'CabalCargs.Lenses.field'!"
+field F.Autogen_Hs_Source_Dirs = error $ "Unexpected argument 'Autogen_Hs_Source_Dirs' for 'CabalCargs.Lenses.field'!"
+field F.Autogen_Include_Dirs   = error $ "Unexpected argument 'Autogen_Include_Dirs' for 'CabalCargs.Lenses.field'!"
+field F.Autogen_Includes       = error $ "Unexpected argument 'Autogen_Includes' for 'CabalCargs.Lenses.field'!"
 
 
 oldAndDefaultExtensionsL :: Lens' BuildInfo [Extension]
@@ -114,3 +121,19 @@ extsToStrings = iso (map toString) (map toExt)
 
          | otherwise
          = UnknownExtension str
+
+
+langToString :: Iso' Language String
+langToString = iso toString toLang
+   where
+      toString lang =
+         case lang of
+              UnknownLanguage l -> l
+              _                 -> show lang
+
+      toLang str
+         | [(lang, _)] <- reads str :: [(Language, String)]
+         = lang
+
+         | otherwise
+         = UnknownLanguage str

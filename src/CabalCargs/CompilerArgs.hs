@@ -22,36 +22,47 @@ import Control.Lens
 import Control.Monad.Trans.Either (runEitherT)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path ((</>))
+import qualified Distribution.PackageDescription as PD
+import qualified Language.Haskell.Extension as Lang
+
 
 -- | The collected compiler args from the cabal file.
 data CompilerArgs = CompilerArgs 
-   { hsSourceDirs      :: [FilePath]
-   , ghcOptions        :: [String]
-   , defaultExtensions :: [String]
-   , cppOptions        :: [String]
-   , cSources          :: [FilePath]
-   , ccOptions         :: [String]
-   , extraLibDirs      :: [FilePath]
-   , extraLibraries    :: [String]
-   , ldOptions         :: [String]
-   , includeDirs       :: [FilePath]
-   , includes          :: [String]
-   , cabalFile         :: FilePath       -- ^ path to the used cabal file
-   , packageDB         :: Maybe FilePath -- ^ the path to the package database of the cabal sandbox
+   { hsSourceDirs        :: [FilePath]
+   , ghcOptions          :: [String]
+   , defaultExtensions   :: [String]
+   , defaultLanguage     :: Maybe String
+   , cppOptions          :: [String]
+   , cSources            :: [FilePath]
+   , ccOptions           :: [String]
+   , extraLibDirs        :: [FilePath]
+   , extraLibraries      :: [String]
+   , ldOptions           :: [String]
+   , includeDirs         :: [FilePath]
+   , includes            :: [String]
+   , packageDB           :: Maybe FilePath -- ^ the path to the package database of the cabal sandbox
+   , autogenHsSourceDirs :: [FilePath]     -- ^ dirs of automatically generated haskell source files by cabal (e.g. Paths_*)
+   , autogenIncludeDirs  :: [FilePath]     -- ^ dirs of automatically generated include files by cabal
+   , autogenIncludes     :: [String]       -- ^ automatically generated include files by cabal (e.g. cabal_macros.h)
+   , cabalFile           :: FilePath       -- ^ path to the used cabal file
    }
    deriving (Show, Eq)
 
-makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
-              , ("ghcOptions"       , "ghcOptionsL")
-              , ("defaultExtensions", "defaultExtensionsL")
-              , ("cppOptions"       , "cppOptionsL")
-              , ("cSources"         , "cSourcesL")
-              , ("ccOptions"        , "ccOptionsL")
-              , ("extraLibDirs"     , "extraLibDirsL")
-              , ("extraLibraries"   , "extraLibrariesL")
-              , ("ldOptions"        , "ldOptionsL")
-              , ("includeDirs"      , "includeDirsL")
-              , ("includes"         , "includesL")
+makeLensesFor [ ("hsSourceDirs"       , "hsSourceDirsL")
+              , ("ghcOptions"         , "ghcOptionsL")
+              , ("defaultExtensions"  , "defaultExtensionsL")
+              , ("defaultLanguage"    , "defaultLanguageL")
+              , ("cppOptions"         , "cppOptionsL")
+              , ("cSources"           , "cSourcesL")
+              , ("ccOptions"          , "ccOptionsL")
+              , ("extraLibDirs"       , "extraLibDirsL")
+              , ("extraLibraries"     , "extraLibrariesL")
+              , ("ldOptions"          , "ldOptionsL")
+              , ("includeDirs"        , "includeDirsL")
+              , ("includes"           , "includesL")
+              , ("autogenHsSourceDirs", "autogenHsSourceDirsL")
+              , ("autogenIncludeDirs" , "autogenIncludeDirsL")
+              , ("autogenIncludes"    , "autogenIncludesL")
               ] ''CompilerArgs
 
 type Error = String
@@ -105,10 +116,17 @@ fromSpec spec =
       setCabalFile cargs = cargs { cabalFile = Spec.cabalFile spec }
 
       absolutePaths cargs =
-         cargs & hsSourceDirsL %~ map prependCabalDir
-               & cSourcesL     %~ map prependCabalDir
-               & extraLibDirsL %~ map prependCabalDir
-               & includeDirsL  %~ map prependCabalDir
+         cargs & hsSourceDirsL        %~ map prependCabalDir
+               & cSourcesL            %~ map prependCabalDir
+               & extraLibDirsL        %~ map prependCabalDir
+               & includeDirsL         %~ map prependCabalDir
+               & includesL            %~ map prependCabalDir
+               & autogenHsSourceDirsL %~ map prependCabalDir
+               & autogenIncludeDirsL  %~ map prependCabalDir
+               & autogenIncludesL     %~ map prependCabalDir
+         where
+            prependCabalDir path = FP.encodeString $ cabalDir </> FP.decodeString path
+            cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
 
       collectFromSection cargs section =
          collectFields (L.buildInfoOf section) cargs
@@ -118,21 +136,32 @@ fromSpec spec =
         where
            addField cargs field = addArg field buildInfo cargs
 
+           addArg F.Default_Language buildInfo cargs = cargs
+--              cargs & defaultLanguageL %~ (<|> (toString <$> (cabalPkg ^. buildInfo . L.defaultLang)))
+--              where
+--                 toString (Lang.UnknownLanguage lang) = lang
+--                 toString lang                        = show lang
+
            addArg F.Package_Db _ cargs =
               cargs & packageDBL %~ (<|> (maybeToList $ Spec.packageDB spec))
 
+           addArg F.Autogen_Hs_Source_Dirs _ cargs =
+              cargs & autogenHsSourceDirsL .~ ["dist/build/autogen"]
+
+           addArg F.Autogen_Include_Dirs _ cargs =
+              cargs & autogenIncludeDirsL .~ ["dist/build/autogen"]
+
+           addArg F.Autogen_Includes _ cargs =
+              cargs & autogenIncludesL .~ ["cabal_macros.h"]
+
            addArg field buildInfo cargs =
               cargs & (fieldL field) %~ nub . (++ cabalPkg ^. buildInfo . (L.field field))
-              where
-                 cabalPkg = Spec.cabalPackage spec
 
-           fields = case Spec.fields spec of
-                         Fs.Fields fs -> fs
-                         _            -> F.allFields
+           cabalPkg = Spec.cabalPackage spec
+           fields   = case Spec.fields spec of
+                           Fs.Fields fs -> fs
+                           _            -> F.allFields
 
-      prependCabalDir path = FP.encodeString $ cabalDir </> FP.decodeString path
-         where
-            cabalDir = FP.directory . FP.decodeString $ Spec.cabalFile spec
 
 
 packageDBL :: Lens' CompilerArgs [String]
@@ -145,33 +174,41 @@ packageDBL = lens getter setter
 
 
 fieldL :: F.Field -> Lens' CompilerArgs [String]
-fieldL F.Hs_Source_Dirs     = hsSourceDirsL
-fieldL F.Ghc_Options        = ghcOptionsL
-fieldL F.Default_Extensions = defaultExtensionsL
-fieldL F.Cpp_Options        = cppOptionsL
-fieldL F.C_Sources          = cSourcesL
-fieldL F.Cc_Options         = ccOptionsL
-fieldL F.Extra_Lib_Dirs     = extraLibDirsL
-fieldL F.Extra_Libraries    = extraLibrariesL
-fieldL F.Ld_Options         = ldOptionsL
-fieldL F.Include_Dirs       = includeDirsL
-fieldL F.Includes           = includesL
-fieldL F.Package_Db         = packageDBL
+fieldL F.Hs_Source_Dirs         = hsSourceDirsL
+fieldL F.Ghc_Options            = ghcOptionsL
+fieldL F.Default_Extensions     = defaultExtensionsL
+fieldL F.Default_Language       = error $ "Unexpected argument 'Default_Language' for 'CabalCargs.CompilerArgs.fieldL'!"
+fieldL F.Cpp_Options            = cppOptionsL
+fieldL F.C_Sources              = cSourcesL
+fieldL F.Cc_Options             = ccOptionsL
+fieldL F.Extra_Lib_Dirs         = extraLibDirsL
+fieldL F.Extra_Libraries        = extraLibrariesL
+fieldL F.Ld_Options             = ldOptionsL
+fieldL F.Include_Dirs           = includeDirsL
+fieldL F.Includes               = includesL
+fieldL F.Package_Db             = packageDBL
+fieldL F.Autogen_Hs_Source_Dirs = error $ "Unexpected argument 'Autogen_Hs_Source_Dirs' for 'CabalCargs.CompilerArgs.fieldL'!"
+fieldL F.Autogen_Include_Dirs   = error $ "Unexpected argument 'Autogen_Include_Dirs' for 'CabalCargs.CompilerArgs.fieldL'!"
+fieldL F.Autogen_Includes       = error $ "Unexpected argument 'Autogen_Includes' for 'CabalCargs.CompilerArgs.fieldL'!"
 
 
 defaultCompilerArgs :: CompilerArgs
 defaultCompilerArgs = CompilerArgs
-   { hsSourceDirs      = []
-   , ghcOptions        = []
-   , defaultExtensions = []
-   , cppOptions        = []
-   , cSources          = []
-   , ccOptions         = []
-   , extraLibDirs      = []
-   , extraLibraries    = []
-   , ldOptions         = []
-   , includeDirs       = []
-   , includes          = []
-   , cabalFile         = ""
-   , packageDB         = Nothing
+   { hsSourceDirs        = []
+   , ghcOptions          = []
+   , defaultExtensions   = []
+   , defaultLanguage     = Nothing
+   , cppOptions          = []
+   , cSources            = []
+   , ccOptions           = []
+   , extraLibDirs        = []
+   , extraLibraries      = []
+   , ldOptions           = []
+   , includeDirs         = []
+   , includes            = []
+   , cabalFile           = ""
+   , packageDB           = Nothing
+   , autogenHsSourceDirs = []
+   , autogenIncludeDirs  = []
+   , autogenIncludes     = []
    }

@@ -13,37 +13,39 @@ import Filesystem.Path ((</>))
 
 
 format :: Formatting -> CompilerArgs -> [String]
-format Ghc cargs = concat [ map ("-i" ++) (hsSourceDirs cargs)
-                          , ["-i" ++ autogenDir]
+format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
                           , ghcOptions cargs
                           , map ("-X" ++) (defaultExtensions cargs)
+                          , maybe [""] (\lang -> ["-X" ++ lang]) (defaultLanguage cargs)
                           , map ("-optP" ++) (cppOptions cargs)
                           , map ("-optc" ++) (ccOptions cargs)
                           , map ("-L" ++) (extraLibDirs cargs)
                           , map ("-l" ++) (extraLibraries cargs)
-                          , map ("-I" ++) (includeDirs cargs)
-                          , ["-I" ++ autogenDir]
-                          , ["-optP-include", "-optP" ++ autogenDir ++ "/cabal_macros.h"]
-                          , ghcIncludes
+                          , formatIncludeDirs $ includeDirs cargs
+                          , formatIncludes $ includes cargs
                           , maybe [""] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
+                          , formatHsSourceDirs $ autogenHsSourceDirs cargs
+                          , formatIncludeDirs $ autogenIncludeDirs cargs
+                          , formatIncludes $ autogenIncludes cargs
                           ]
-
    where
-      ghcIncludes =
-         reverse $ foldl' addInclude [] (includes cargs)
+      formatHsSourceDirs = map ("-i" ++)
+      formatIncludeDirs  = map ("-I" ++)
+
+      formatIncludes incs = reverse $ foldl' addInclude [] incs
          where
             addInclude incs inc = ("-optP" ++ inc) : ("-optP-include") : incs
-
-      autogenDir = prependCabalDir cargs "dist/build/autogen"
 
 
 format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
    where
       socket = ["--socket=" ++ prependCabalDir cargs ".hdevtools.sock"]
 
+
 format Pure cargs = concat [ hsSourceDirs cargs
                            , ghcOptions cargs
                            , defaultExtensions cargs
+                           , maybeToList $ defaultLanguage cargs
                            , cppOptions cargs
                            , cSources cargs
                            , ccOptions cargs
@@ -53,6 +55,9 @@ format Pure cargs = concat [ hsSourceDirs cargs
                            , includeDirs cargs
                            , includes cargs
                            , maybeToList $ packageDB cargs
+                           , autogenHsSourceDirs cargs
+                           , autogenIncludeDirs cargs
+                           , autogenIncludes cargs
                            ]
 
 
