@@ -32,7 +32,7 @@ get = cmdArgs $ Args
    , executable = def &= typ "NAME" &= help "Only the compiler args of the library section are printed out."
    , testSuite  = def &= typ "NAME" &= help "Only the compiler args of the test suite section are printed out."
    , benchmark  = def &= typ "NAME" &= help "Only the compiler args of the benchmark section are printed out."
-   , only       = def &= typ "FIELD" &= help "Only the specified compiler args are printed out, otherwise all args are printed out. The field name equals the ones in the cabal file e.g.: hs-source-dirs, ghc-options, cpp-options ..."
+   , only       = def &= typ "FIELD" &= help "Only the specified compiler args are printed out, otherwise all args are printed out. The field name equals the ones in the cabal file, just the '-' replaced by a '_' e.g.: hs_source_dirs, ghc_options, cpp_options ..."
    , format     = def &= typ "FORMAT" &= help "How the print out should be formated: ghc, hdevtools, pure."
    , sourceFile = def &= typ "FILE" &= help "If given, then the cabal file is searched for a matching section. If multiple sections match, then all sections are used."
    , cabalFile  = def &= typ "FILE" &= help "If not given, then a cabal file is searched upwards the directory tree."
