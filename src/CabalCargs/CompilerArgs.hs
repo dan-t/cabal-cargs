@@ -125,10 +125,8 @@ fromSpec spec =
                & cSourcesL            %~ map prependCabalDir
                & extraLibDirsL        %~ map prependCabalDir
                & includeDirsL         %~ map prependCabalDir
-               & includesL            %~ map prependCabalDir
                & autogenHsSourceDirsL %~ map prependCabalDir
                & autogenIncludeDirsL  %~ map prependCabalDir
-               & autogenIncludesL     %~ map prependCabalDir
          where
             prependCabalDir path = FP.encodeString $ cabalDir </> FP.decodeString path
             cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
