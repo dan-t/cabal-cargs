@@ -71,6 +71,8 @@ type Error = String
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
+--
+--   The compiler arguments are collected according to the given sections and fields.
 fromCabalFile :: FilePath -> S.Sections -> Fs.Fields -> IO (Either Error CompilerArgs)
 fromCabalFile file sections fields = runEitherT $ do
    fromSpec <$> Spec.fromCabalFile file sections fields
@@ -86,6 +88,9 @@ fromCabalFile file sections fields = runEitherT $ do
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
+--
+--   The compiler arguments are collected according to the determined
+--   section and the given fields.
 fromSourceFile :: FilePath -> Fs.Fields -> IO (Either Error CompilerArgs)
 fromSourceFile file fields = runEitherT $ do
    fromSpec <$> Spec.fromSourceFile file fields
@@ -102,7 +107,7 @@ fromCmdArgs args = runEitherT $ do
    fromSpec <$> Spec.fromCmdArgs args
 
 
--- | Collect the compiler args specified by 'Spec'.
+-- | Create a 'CompilerArgs' and collect the compiler args specified by 'Spec'.
 fromSpec :: Spec -> CompilerArgs
 fromSpec spec =
    case Spec.sections spec of
