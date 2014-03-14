@@ -26,8 +26,7 @@ import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
 import qualified Filesystem as FS
 import qualified Data.Text as T
-import Data.List (find)
-import Data.List.Split (splitOn)
+import Data.List (find, isSuffixOf)
 import Data.Maybe (isJust)
 
 
@@ -175,14 +174,8 @@ findPackageDB cabalFile = do
    return $ FP.encodeString <$> find isPackageDB files
 
    where
-      isPackageDB file
-         | comps@(_:_) <- splitOn "-" (FP.encodeString file)
-         = last comps == "packages.conf.d"
-
-         | otherwise
-         = False
-
-      sandboxDir = FP.decodeString ".cabal-sandbox"
+      isPackageDB file = "packages.conf.d" `isSuffixOf` (FP.encodeString file)
+      sandboxDir       = FP.decodeString ".cabal-sandbox"
 
 
 -- | Find a cabal file starting at the given directory, going upwards the directory

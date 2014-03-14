@@ -21,8 +21,7 @@ library
                    lens >=4.0.1 && <4.1, directory -any, strict >=0.3.2 && <0.4,
                    transformers >=0.3.0.0 && <0.4, either >=4.1.1 && <4.2,
                    text >=1.1.0.1 && <1.2, system-filepath >=0.4.9 && <0.5,
-                   system-fileio >=0.3.12 && <0.4, split >=0.2.2 && <0.3,
-                   Cabal >=1.18.0 && <1.19
+                   system-fileio >=0.3.12 && <0.4, Cabal >=1.18.0 && <1.19
     exposed-modules: CabalCargs.Args CabalCargs.Field CabalCargs.Fields
                      CabalCargs.Formatting CabalCargs.Format CabalCargs.Spec
                      CabalCargs.Sections CabalCargs.CompilerArgs CabalCargs.Lenses
