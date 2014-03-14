@@ -22,16 +22,16 @@ import Control.Lens
 import Control.Monad.Trans.Either (runEitherT)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path ((</>))
-import qualified Distribution.PackageDescription as PD
-import qualified Language.Haskell.Extension as Lang
 
 
--- | The collected compiler args from the cabal file.
+-- | The collected compiler args from the cabal file. Till the field 'packageDB'
+--   all fields represent the equaliy named fields ('-' replaced by CamelCase)
+--   from the cabal file.
 data CompilerArgs = CompilerArgs 
    { hsSourceDirs        :: [FilePath]
    , ghcOptions          :: [String]
    , defaultExtensions   :: [String]
-   , defaultLanguage     :: Maybe String
+   , defaultLanguage     :: [String]
    , cppOptions          :: [String]
    , cSources            :: [FilePath]
    , ccOptions           :: [String]
@@ -47,6 +47,7 @@ data CompilerArgs = CompilerArgs
    , cabalFile           :: FilePath       -- ^ path to the used cabal file
    }
    deriving (Show, Eq)
+
 
 makeLensesFor [ ("hsSourceDirs"       , "hsSourceDirsL")
               , ("ghcOptions"         , "ghcOptionsL")
@@ -135,36 +136,27 @@ fromSpec spec =
          collectFields (L.buildInfoOf section) cargs
 
       collectFields buildInfo cargs =
-        foldl' addField cargs fields
+        foldl' (addArg buildInfo) cargs fields
         where
-           addField cargs field = addArg field buildInfo cargs
-
-           addArg F.Default_Language buildInfo cargs = cargs
---              cargs & defaultLanguageL %~ (<|> (toString <$> (cabalPkg ^. buildInfo . L.defaultLang)))
---              where
---                 toString (Lang.UnknownLanguage lang) = lang
---                 toString lang                        = show lang
-
-           addArg F.Package_Db _ cargs =
+           addArg _ cargs F.Package_Db  =
               cargs & packageDBL %~ (<|> (maybeToList $ Spec.packageDB spec))
 
-           addArg F.Autogen_Hs_Source_Dirs _ cargs =
+           addArg _ cargs F.Autogen_Hs_Source_Dirs =
               cargs & autogenHsSourceDirsL .~ ["dist/build/autogen"]
 
-           addArg F.Autogen_Include_Dirs _ cargs =
+           addArg _ cargs F.Autogen_Include_Dirs =
               cargs & autogenIncludeDirsL .~ ["dist/build/autogen"]
 
-           addArg F.Autogen_Includes _ cargs =
+           addArg _ cargs F.Autogen_Includes =
               cargs & autogenIncludesL .~ ["cabal_macros.h"]
 
-           addArg field buildInfo cargs =
-              cargs & (fieldL field) %~ nub . (++ cabalPkg ^. buildInfo . (L.field field))
+           addArg buildInfo cargs field =
+              cargs & (fieldL field) %~ nub . (++ (cabalPkg ^. buildInfo . (L.field field)))
 
            cabalPkg = Spec.cabalPackage spec
            fields   = case Spec.fields spec of
                            Fs.Fields fs -> fs
                            _            -> F.allFields
-
 
 
 packageDBL :: Lens' CompilerArgs [String]
@@ -180,7 +172,7 @@ fieldL :: F.Field -> Lens' CompilerArgs [String]
 fieldL F.Hs_Source_Dirs         = hsSourceDirsL
 fieldL F.Ghc_Options            = ghcOptionsL
 fieldL F.Default_Extensions     = defaultExtensionsL
-fieldL F.Default_Language       = error $ "Unexpected argument 'Default_Language' for 'CabalCargs.CompilerArgs.fieldL'!"
+fieldL F.Default_Language       = defaultLanguageL
 fieldL F.Cpp_Options            = cppOptionsL
 fieldL F.C_Sources              = cSourcesL
 fieldL F.Cc_Options             = ccOptionsL
@@ -200,7 +192,7 @@ defaultCompilerArgs = CompilerArgs
    { hsSourceDirs        = []
    , ghcOptions          = []
    , defaultExtensions   = []
-   , defaultLanguage     = Nothing
+   , defaultLanguage     = []
    , cppOptions          = []
    , cSources            = []
    , ccOptions           = []

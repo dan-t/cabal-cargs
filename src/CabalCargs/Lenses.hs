@@ -8,8 +8,6 @@ module CabalCargs.Lenses
    , buildInfoOf
    , allBuildInfos
    , field
-   , defaultLang
-   , langToString
    ) where
 
 import Distribution.PackageDescription
@@ -28,7 +26,7 @@ makeLensesFor [ ("condLibrary"    , "condLibraryL")
 
 makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               , ("options"          , "optionsL")
-              , ("defaultLanguage"  , "defaultLang")
+              , ("defaultLanguage"  , "defaultLanguageL")
               , ("cppOptions"       , "cppOptionsL")
               , ("cSources"         , "cSourcesL")
               , ("ccOptions"        , "ccOptionsL")
@@ -44,7 +42,7 @@ buildInfoOfLib :: Traversal' GenericPackageDescription BuildInfo
 buildInfoOfLib = condLibraryL . _Just . biplate
 
 
-buildInfoOfExe :: String -> Traversal' GenericPackageDescription BuildInfo 
+buildInfoOfExe :: String -> Traversal' GenericPackageDescription BuildInfo
 buildInfoOfExe name = condExecutablesL 
                       . traversed 
                       . filtered ((== name) . fst) 
@@ -72,15 +70,18 @@ buildInfoOf (S.TestSuite name)  = buildInfoOfTest name
 buildInfoOf (S.Benchmark name)  = buildInfoOfBenchm name
 
 
+-- | A traversal to visit all 'BuildInfo' of the 'GenericPackageDescription',
+--   this includes all sections and also the conditional branches in the cabal file.
 allBuildInfos :: Traversal' GenericPackageDescription BuildInfo
 allBuildInfos = biplate
 
 
+-- | A lens from a 'BuildInfo' to a list of stringified field entries of the 'BuildInfo'.
 field :: F.Field -> Traversal' BuildInfo [String]
 field F.Hs_Source_Dirs         = hsSourceDirsL
 field F.Ghc_Options            = optionsL . traversed . filtered ((== GHC) . fst) . _2
 field F.Default_Extensions     = oldAndDefaultExtensionsL . extsToStrings
-field F.Default_Language       = error $ "Unexpected argument 'Default_Language' for 'CabalCargs.Lenses.field'!"
+field F.Default_Language       = defaultLanguageL . langToString
 field F.Cpp_Options            = cppOptionsL
 field F.C_Sources              = cSourcesL
 field F.Cc_Options             = ccOptionsL
@@ -123,17 +124,22 @@ extsToStrings = iso (map toString) (map toExt)
          = UnknownExtension str
 
 
-langToString :: Iso' Language String
+-- | A lens (iso) that converts between the language and
+--   a list containing a string with the name of the language.
+langToString :: Iso' (Maybe Language) [String]
 langToString = iso toString toLang
    where
-      toString lang =
+      toString Nothing     = []
+      toString (Just lang) =
          case lang of
-              UnknownLanguage l -> l
-              _                 -> show lang
+              UnknownLanguage l -> [l]
+              _                 -> [show lang]
 
-      toLang str
+      toLang (str:[])
          | [(lang, _)] <- reads str :: [(Language, String)]
-         = lang
+         = Just lang
 
          | otherwise
-         = UnknownLanguage str
+         = Just $ UnknownLanguage str
+
+      toLang _ = Nothing

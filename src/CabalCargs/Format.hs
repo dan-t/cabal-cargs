@@ -16,7 +16,7 @@ format :: Formatting -> CompilerArgs -> [String]
 format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
                           , ghcOptions cargs
                           , map ("-X" ++) (defaultExtensions cargs)
-                          , maybe [""] (\lang -> ["-X" ++ lang]) (defaultLanguage cargs)
+                          , map ("-X" ++) (defaultLanguage cargs)
                           , map ("-optP" ++) (cppOptions cargs)
                           , map ("-optc" ++) (ccOptions cargs)
                           , map ("-L" ++) (extraLibDirs cargs)
@@ -45,7 +45,7 @@ format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
 format Pure cargs = concat [ hsSourceDirs cargs
                            , ghcOptions cargs
                            , defaultExtensions cargs
-                           , maybeToList $ defaultLanguage cargs
+                           , defaultLanguage cargs
                            , cppOptions cargs
                            , cSources cargs
                            , ccOptions cargs
