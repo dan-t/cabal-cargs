@@ -90,12 +90,15 @@ field F.Extra_Libraries        = extraLibsL
 field F.Ld_Options             = ldOptionsL
 field F.Include_Dirs           = includeDirsL
 field F.Includes               = includesL
-field F.Package_Db             = error $ "Unexpected argument 'Package_Db' for 'CabalCargs.Lenses.field'!"
-field F.Autogen_Hs_Source_Dirs = error $ "Unexpected argument 'Autogen_Hs_Source_Dirs' for 'CabalCargs.Lenses.field'!"
-field F.Autogen_Include_Dirs   = error $ "Unexpected argument 'Autogen_Include_Dirs' for 'CabalCargs.Lenses.field'!"
-field F.Autogen_Includes       = error $ "Unexpected argument 'Autogen_Includes' for 'CabalCargs.Lenses.field'!"
+field F.Package_Db             = nopLens
+field F.Autogen_Hs_Source_Dirs = nopLens
+field F.Autogen_Include_Dirs   = nopLens
+field F.Autogen_Includes       = nopLens
 
 
+-- | A lens that merges the fields 'default-extensions' and 'extensions',
+--   which now mean the same thing in cabal, 'extensions' is only the old
+--   name of 'default-extensions'.
 oldAndDefaultExtensionsL :: Lens' BuildInfo [Extension]
 oldAndDefaultExtensionsL = lens getter setter
    where
@@ -103,6 +106,8 @@ oldAndDefaultExtensionsL = lens getter setter
       setter buildInfo exts = buildInfo { defaultExtensions = exts }
 
 
+-- | A lens (iso) that converts between a list of extensions
+--   and a list of strings containing the names of the extensions.
 extsToStrings :: Iso' [Extension] [String]
 extsToStrings = iso (map toString) (map toExt)
    where
@@ -143,3 +148,9 @@ langToString = iso toString toLang
          = Just $ UnknownLanguage str
 
       toLang _ = Nothing
+
+
+-- | A lens that does nothing, always returns an empty
+--   list and doesn't modify the given BuildInfo.
+nopLens :: Lens' BuildInfo [String]
+nopLens = lens (const []) (\buildInfo _ -> buildInfo)
