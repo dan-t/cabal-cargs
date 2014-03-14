@@ -114,7 +114,7 @@ fromCmdArgs args
 
    | otherwise = do
       curDir    <- io $ getCurrentDirectory
-      cabalFile <- findCabalFile (curDir ++ "/")
+      cabalFile <- findCabalFile curDir
       fromCabalFile cabalFile (S.sections args) (F.fields args)
 
 
@@ -219,7 +219,12 @@ findCabalFile file = do
 
 
 absoluteDirectory :: FilePath -> IO FP.FilePath
-absoluteDirectory = FS.canonicalizePath . FP.directory . FP.decodeString
+absoluteDirectory file = do
+   absFile <- absoluteFile file
+   isDir   <- FS.isDirectory absFile
+   if isDir
+      then return absFile
+      else return . FP.directory $ absFile
 
 
 absoluteFile :: FilePath -> IO FP.FilePath
