@@ -182,9 +182,9 @@ fieldL F.Ld_Options             = ldOptionsL
 fieldL F.Include_Dirs           = includeDirsL
 fieldL F.Includes               = includesL
 fieldL F.Package_Db             = packageDBL
-fieldL F.Autogen_Hs_Source_Dirs = error $ "Unexpected argument 'Autogen_Hs_Source_Dirs' for 'CabalCargs.CompilerArgs.fieldL'!"
-fieldL F.Autogen_Include_Dirs   = error $ "Unexpected argument 'Autogen_Include_Dirs' for 'CabalCargs.CompilerArgs.fieldL'!"
-fieldL F.Autogen_Includes       = error $ "Unexpected argument 'Autogen_Includes' for 'CabalCargs.CompilerArgs.fieldL'!"
+fieldL F.Autogen_Hs_Source_Dirs = autogenHsSourceDirsL
+fieldL F.Autogen_Include_Dirs   = autogenIncludeDirsL
+fieldL F.Autogen_Includes       = autogenIncludesL
 
 
 defaultCompilerArgs :: CompilerArgs
