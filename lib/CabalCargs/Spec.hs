@@ -32,12 +32,13 @@ import Data.Maybe (isJust)
 
 -- | Specifies which compiler args from which sections should be collected.
 data Spec = Spec 
-   { sections     :: S.Sections                -- ^ the sections used for collecting the compiler args
-   , fields       :: F.Fields                  -- ^ for these fields compiler args are collected
-   , cabalPackage :: GenericPackageDescription -- ^ the package description of the read in cabal file
-   , cabalFile    :: FilePath                  -- ^ the cabal file read from
-   , distDir      :: Maybe FilePath            -- ^ the dist directory of the cabal build
-   , packageDB    :: Maybe FilePath            -- ^ path to the package database of the cabal sandbox
+   { sections      :: S.Sections                -- ^ the sections used for collecting the compiler args
+   , fields        :: F.Fields                  -- ^ for these fields compiler args are collected
+   , cabalPackage  :: GenericPackageDescription -- ^ the package description of the read in cabal file
+   , cabalFile     :: FilePath                  -- ^ the cabal file read from
+   , distDir       :: Maybe FilePath            -- ^ the dist directory of the cabal build, a relative path to the directory of the cabal file
+   , packageDB     :: Maybe FilePath            -- ^ the directory of package database of the cabal sandbox, a relative path to the directory of the cabal file
+   , relativePaths :: Bool                      -- ^ if all returned paths are relative to the directory of the cabal file, otherwise all paths are absolute
    }
 
 
@@ -56,12 +57,13 @@ fromCabalFile file sections fields = do
    pkgDescrp <- packageDescription file
    absFile   <- FP.encodeString <$> (io $ absoluteFile file)
    right $ Spec
-      { sections     = sections
-      , fields       = fields
-      , cabalPackage = pkgDescrp
-      , cabalFile    = absFile
-      , distDir      = distDir
-      , packageDB    = pkgDB
+      { sections      = sections
+      , fields        = fields
+      , cabalPackage  = pkgDescrp
+      , cabalFile     = absFile
+      , distDir       = distDir
+      , packageDB     = pkgDB
+      , relativePaths = False
       }
 
 
@@ -84,11 +86,12 @@ fromSourceFile file fields = do
    srcSections <- io $ findSections file cabalFile pkgDescrp
    right $ Spec
       { sections = combineSections S.AllSections srcSections
-      , fields   = fields
-      , cabalPackage = pkgDescrp
-      , cabalFile    = cabalFile
-      , distDir      = distDir
-      , packageDB    = pkgDB
+      , fields        = fields
+      , cabalPackage  = pkgDescrp
+      , cabalFile     = cabalFile
+      , distDir       = distDir
+      , packageDB     = pkgDB
+      , relativePaths = False
       }
 
 
@@ -106,7 +109,9 @@ fromCmdArgs args
                                Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
                                _            -> return []
 
-      right $ spec { sections = combineSections (sections spec) srcSections }
+      right $ spec { sections      = combineSections (sections spec) srcSections
+                   , relativePaths = A.relative args 
+                   }
 
    | Just sourceFile <- A.sourceFile args = do
       spec <- fromSourceFile sourceFile (F.fields args)
@@ -114,12 +119,15 @@ fromCmdArgs args
                               S.Sections ss -> ss
                               _             -> []
 
-      right $ spec { sections = combineSections (S.sections args) specSections }
+      right $ spec { sections      = combineSections (S.sections args) specSections
+                   , relativePaths = A.relative args
+                   }
 
    | otherwise = do
       curDir    <- io $ getCurrentDirectory
       cabalFile <- findCabalFile curDir
-      fromCabalFile cabalFile (S.sections args) (F.fields args)
+      spec      <- fromCabalFile cabalFile (S.sections args) (F.fields args)
+      right $ spec { relativePaths = A.relative args }
 
 
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
@@ -204,7 +212,7 @@ findCabalFile file = do
 
 
 -- | Find the package database of the cabal sandbox from the given cabal file.
---   The returned file path is absolute.
+--   The returned file path is relative to the directory of the cabal file.
 findPackageDB :: FilePath -> IO (Maybe FilePath)
 findPackageDB cabalFile = do
    cabalDir <- absoluteDirectory cabalFile
@@ -213,7 +221,7 @@ findPackageDB cabalFile = do
    if hasDir
       then do
          files <- filterM FS.isDirectory =<< (FS.listDirectory sandboxDir)
-         return $ FP.encodeString <$> find isPackageDB files
+         return $ FP.encodeString . (stripPrefix cabalDir) <$> find isPackageDB files
       else return Nothing
 
    where
@@ -222,7 +230,8 @@ findPackageDB cabalFile = do
 
 -- | Find the dist directory of the cabal build from the given cabal file. For a non sandboxed
 --   build it's just the directory 'dist' in the cabal build directory. For a sandboxed build
---   it's the directory 'dist/dist-sandbox-*'. The returned file path is absolute.
+--   it's the directory 'dist/dist-sandbox-*'. The returned file path is relative to the
+--   directory of the cabal file.
 findDistDir :: FilePath -> IO (Maybe FilePath)
 findDistDir cabalFile = do
    cabalDir   <- absoluteDirectory cabalFile
@@ -231,7 +240,7 @@ findDistDir cabalFile = do
    if hasDistDir
       then do
          files <- filterM FS.isDirectory =<< (FS.listDirectory distDir)
-         return $ FP.encodeString <$> maybe (Just distDir) Just (find isSandboxDistDir files)
+         return $ FP.encodeString . (stripPrefix cabalDir) <$> maybe (Just distDir) Just (find isSandboxDistDir files)
       else return Nothing
 
    where
@@ -250,6 +259,15 @@ absoluteDirectory file = do
 
 absoluteFile :: FilePath -> IO FP.FilePath
 absoluteFile = FS.canonicalizePath . FP.decodeString
+
+
+stripPrefix :: FP.FilePath -> FP.FilePath -> FP.FilePath
+stripPrefix prefix file
+   | Just stripped <- FP.stripPrefix prefix file
+   = stripped
+
+   | otherwise
+   = file
 
 
 combineSections :: S.Sections -> [S.Section] -> S.Sections

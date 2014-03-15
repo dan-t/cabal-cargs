@@ -17,7 +17,7 @@ import qualified CabalCargs.Fields as Fs
 import qualified CabalCargs.Lenses as L
 import Data.List (nub, foldl')
 import Data.Maybe (maybeToList)
-import Control.Applicative ((<|>), (<$>))
+import Control.Applicative ((<$>))
 import Control.Lens
 import Control.Monad.Trans.Either (runEitherT)
 import qualified Filesystem.Path.CurrentOS as FP
@@ -121,13 +121,18 @@ fromSpec spec =
    where
       setCabalFile cargs = cargs { cabalFile = Spec.cabalFile spec }
 
-      absolutePaths cargs =
-         cargs & hsSourceDirsL        %~ map prependCabalDir
-               & cSourcesL            %~ map prependCabalDir
-               & extraLibDirsL        %~ map prependCabalDir
-               & includeDirsL         %~ map prependCabalDir
-               & autogenHsSourceDirsL %~ map prependCabalDir
-               & autogenIncludeDirsL  %~ map prependCabalDir
+      absolutePaths cargs
+         | Spec.relativePaths spec
+         = cargs
+
+         | otherwise
+         = cargs & hsSourceDirsL        %~ map prependCabalDir
+                 & cSourcesL            %~ map prependCabalDir
+                 & extraLibDirsL        %~ map prependCabalDir
+                 & includeDirsL         %~ map prependCabalDir
+                 & autogenHsSourceDirsL %~ map prependCabalDir
+                 & autogenIncludeDirsL  %~ map prependCabalDir
+                 & packageDBL           %~ map prependCabalDir
          where
             prependCabalDir path = FP.encodeString $ cabalDir </> FP.decodeString path
             cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
@@ -139,7 +144,7 @@ fromSpec spec =
         foldl' (addArg buildInfo) cargs fields
         where
            addArg _ cargs F.Package_Db  =
-              cargs & packageDBL %~ (<|> (maybeToList $ Spec.packageDB spec))
+              cargs & packageDBL .~ (maybeToList $ Spec.packageDB spec)
 
            addArg _ cargs F.Autogen_Hs_Source_Dirs
               | Just distDir <- Spec.distDir spec

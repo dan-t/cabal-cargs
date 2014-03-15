@@ -22,6 +22,7 @@ data Args = Args
    , format     :: Formatting
    , sourceFile :: Maybe FilePath
    , cabalFile  :: Maybe FilePath
+   , relative   :: Bool
    }
    deriving (Data, Typeable, Show, Eq)
 
@@ -36,6 +37,7 @@ get = cmdArgs $ Args
    , format     = def &= typ "FORMAT" &= help "How the print out should be formated: ghc, hdevtools, pure."
    , sourceFile = def &= typ "FILE" &= help "If given, then the cabal file is searched for a matching section. If multiple sections match, then all sections are used."
    , cabalFile  = def &= typ "FILE" &= help "If not given, then a cabal file is searched upwards the directory tree."
+   , relative   = def &= help "If all returned paths should be relative to the directory of the cabal file, otherwise the paths are absolute. This option is mostly only used for the normalization of the output for the test cases."
    }
    &= program "cabal-cargs"
    &= summary ""
