@@ -28,7 +28,7 @@ library
     exposed: True
     buildable: True
     cpp-options: -DCABAL
-    hs-source-dirs: src
+    hs-source-dirs: lib
     other-modules: Paths_cabal_cargs
     ghc-options: -W
  
