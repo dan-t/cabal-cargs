@@ -208,12 +208,16 @@ findCabalFile file = do
 findPackageDB :: FilePath -> IO (Maybe FilePath)
 findPackageDB cabalFile = do
    cabalDir <- absoluteDirectory cabalFile
-   files    <- filterM FS.isDirectory =<< (FS.listDirectory (cabalDir </> sandboxDir))
-   return $ FP.encodeString <$> find isPackageDB files
+   let sandboxDir = cabalDir </> FP.decodeString ".cabal-sandbox"
+   hasDir <- FS.isDirectory sandboxDir
+   if hasDir
+      then do
+         files <- filterM FS.isDirectory =<< (FS.listDirectory sandboxDir)
+         return $ FP.encodeString <$> find isPackageDB files
+      else return Nothing
 
    where
       isPackageDB file = "packages.conf.d" `isSuffixOf` (FP.encodeString file)
-      sandboxDir       = FP.decodeString ".cabal-sandbox"
 
 
 -- | Find the dist directory of the cabal build from the given cabal file. For a non sandboxed
