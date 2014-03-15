@@ -39,7 +39,13 @@ format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
 
 format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
    where
-      socket = ["--socket=" ++ prependCabalDir cargs ".hdevtools.sock"]
+      socket = ["--socket=" ++ socketFile]
+      socketFile
+         | relativePaths cargs
+         = ".hdevtools.sock"
+
+         | otherwise
+         = prependCabalDir cargs ".hdevtools.sock"
 
 
 format Pure cargs = concat [ hsSourceDirs cargs

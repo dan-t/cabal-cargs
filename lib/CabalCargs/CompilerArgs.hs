@@ -45,6 +45,7 @@ data CompilerArgs = CompilerArgs
    , autogenIncludeDirs  :: [FilePath]     -- ^ dirs of automatically generated include files by cabal
    , autogenIncludes     :: [String]       -- ^ automatically generated include files by cabal (e.g. cabal_macros.h)
    , cabalFile           :: FilePath       -- ^ path to the used cabal file
+   , relativePaths       :: Bool           -- ^ if all returned paths are relative to the directory of the cabal file, otherwise all paths are absolute
    }
    deriving (Show, Eq)
 
@@ -113,12 +114,14 @@ fromSpec :: Spec -> CompilerArgs
 fromSpec spec =
    case Spec.sections spec of
         S.Sections sections ->
-           setCabalFile $ absolutePaths $ foldl' collectFromSection defaultCompilerArgs sections
+           setCabalFile $ absolutePaths $ foldl' collectFromSection compilerArgs sections
 
         S.AllSections ->
-           setCabalFile $ absolutePaths $ collectFields L.allBuildInfos defaultCompilerArgs
+           setCabalFile $ absolutePaths $ collectFields L.allBuildInfos compilerArgs
 
    where
+      compilerArgs = defaultCompilerArgs { relativePaths = Spec.relativePaths spec }
+
       setCabalFile cargs = cargs { cabalFile = Spec.cabalFile spec }
 
       absolutePaths cargs
@@ -223,4 +226,5 @@ defaultCompilerArgs = CompilerArgs
    , autogenHsSourceDirs = []
    , autogenIncludeDirs  = []
    , autogenIncludes     = []
+   , relativePaths       = False
    }
