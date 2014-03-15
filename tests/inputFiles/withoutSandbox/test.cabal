@@ -10,27 +10,18 @@ description: A command line program for extracting compiler arguments from a cab
 category: Utils
 author: Daniel Trstenjak
 data-dir: ""
-extra-source-files: 
-    README.md
-    tests/mkGoldens
-    tests/inputFiles/withoutSandbox/test.cabal
-    tests/inputFiles/withoutSandbox/dist/.gitignore
-    tests/inputFiles/withoutSandbox/exe/Source.hs
-    tests/inputFiles/withoutSandbox/lib/Source.hs
-    tests/inputFiles/withSandbox/test.cabal
-    tests/inputFiles/withSandbox/dist/dist-sandbox-6d1acfa0/.gitignore
-    tests/inputFiles/withSandbox/.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d/.gitignore
-    tests/inputFiles/withSandbox/exe/Source.hs
-    tests/inputFiles/withSandbox/lib/Source.hs
-    tests/goldenFiles/withoutSandbox/*
-    tests/goldenFiles/withSandbox/*
-    tests/outputFiles/withoutSandbox/.gitignore
-    tests/outputFiles/withSandbox/.gitignore
+extra-source-files: README.md
  
 source-repository head
     type: git
     location: https://github.com/dan-t/cabal-cargs
  
+flag default-false-flag
+  default: False
+
+flag default-true-flag
+  default: True
+
 library
     build-depends: base >=3 && <5, cmdargs >=0.10.5 && <0.11,
                    lens >=4.0.1 && <4.1, directory -any, strict >=0.3.2 && <0.4,
@@ -42,7 +33,8 @@ library
                      CabalCargs.Sections CabalCargs.CompilerArgs CabalCargs.Lenses
     exposed: True
     buildable: True
-    cpp-options: -DCABAL
+    if flag(default-true-flag)
+        cpp-options: -DLIB
     hs-source-dirs: lib
     other-modules: Paths_cabal_cargs
     ghc-options: -W
@@ -53,6 +45,7 @@ executable cabal-cargs
     buildable: True
     hs-source-dirs: exe
     ghc-options: -W
+    cpp-options: -DEXE
 
 test-suite tests
     build-depends: base >=3 && <5, tasty ==0.7.*,
@@ -63,3 +56,5 @@ test-suite tests
     buildable: True
     hs-source-dirs: tests
     ghc-options: -W
+    if flag(default-false-flag)
+        cpp-options: -DTEST

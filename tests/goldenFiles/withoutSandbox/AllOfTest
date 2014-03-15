@@ -1,0 +1,1 @@
+-itests -W -optP-DTEST  -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h

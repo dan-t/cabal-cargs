@@ -1,0 +1,1 @@
+-ilib -W -optP-DLIB -package-conf=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d -idist/dist-sandbox-6d1acfa0/build/autogen -Idist/dist-sandbox-6d1acfa0/build/autogen -optP-include -optPcabal_macros.h

@@ -1,0 +1,1 @@
+lib exe tests -W -DLIB -DEXE -DTEST dist/build/autogen dist/build/autogen cabal_macros.h

@@ -1,0 +1,1 @@
+-g-ilib -g-W -g-optP-DLIB -g -g-idist/build/autogen -g-Idist/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock

@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+dir=$1
+cabal-cargs --relative --sourcefile=inputFiles/$dir/lib > goldenFiles/$dir/FindCabalFile
+cabal-cargs --relative --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/FromCabalFile
+cabal-cargs --relative --sourcefile=inputFiles/$dir/lib/Source.hs > goldenFiles/$dir/FromLibSrcFile
+cabal-cargs --relative --sourcefile=inputFiles/$dir/exe/Source.hs > goldenFiles/$dir/FromExeSrcFile
+
+cabal-cargs --relative --format=hdevtools --sourcefile=inputFiles/$dir/lib > goldenFiles/$dir/FindCabalFileHdevtools
+cabal-cargs --relative --format=hdevtools --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/FromCabalFileHdevtools
+cabal-cargs --relative --format=hdevtools --sourcefile=inputFiles/$dir/lib/Source.hs > goldenFiles/$dir/FromLibSrcFileHdevtools
+cabal-cargs --relative --format=hdevtools --sourcefile=inputFiles/$dir/exe/Source.hs > goldenFiles/$dir/FromExeSrcFileHdevtools
+
+cabal-cargs --relative --format=pure --sourcefile=inputFiles/$dir/lib > goldenFiles/$dir/FindCabalFilePure
+cabal-cargs --relative --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/FromCabalFilePure
+cabal-cargs --relative --format=pure --sourcefile=inputFiles/$dir/lib/Source.hs > goldenFiles/$dir/FromLibSrcPure
+cabal-cargs --relative --format=pure --sourcefile=inputFiles/$dir/exe/Source.hs > goldenFiles/$dir/FromExeSrcFilePure
+
+cabal-cargs --relative --library --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/AllOfLib
+cabal-cargs --relative --executable=cabal-cargs --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/AllOfExe
+cabal-cargs --relative --testsuite=tests --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/AllOfTest
+
+cabal-cargs --relative --library --only=ghc_options --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyGhcOptionsOfLib
+cabal-cargs --relative --executable=cabal-cargs --only=ghc_options --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyGhcOptionsOfExe
+cabal-cargs --relative --testsuite=tests --only=ghc_options --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyGhcOptionsOfTest
+
+cabal-cargs --relative --library --only=hs_source_dirs --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyPureSrcDirsOfLib
+cabal-cargs --relative --executable=cabal-cargs --only=hs_source_dirs --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyPureSrcDirsOfExe
+cabal-cargs --relative --testsuite=tests --only=hs_source_dirs --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyPureSrcDirsOfTest
