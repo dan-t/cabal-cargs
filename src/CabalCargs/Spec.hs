@@ -26,7 +26,7 @@ import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
 import qualified Filesystem as FS
 import qualified Data.Text as T
-import Data.List (find, isSuffixOf)
+import Data.List (find, isSuffixOf, isPrefixOf)
 import Data.Maybe (isJust)
 
 
@@ -36,6 +36,7 @@ data Spec = Spec
    , fields       :: F.Fields                  -- ^ for these fields compiler args are collected
    , cabalPackage :: GenericPackageDescription -- ^ the package description of the read in cabal file
    , cabalFile    :: FilePath                  -- ^ the cabal file read from
+   , distDir      :: Maybe FilePath            -- ^ the dist directory of the cabal build
    , packageDB    :: Maybe FilePath            -- ^ path to the package database of the cabal sandbox
    }
 
@@ -51,6 +52,7 @@ io = liftIO
 fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO Spec
 fromCabalFile file sections fields = do
    pkgDB     <- io $ findPackageDB file
+   distDir   <- io $ findDistDir file
    pkgDescrp <- packageDescription file
    absFile   <- FP.encodeString <$> (io $ absoluteFile file)
    right $ Spec
@@ -58,6 +60,7 @@ fromCabalFile file sections fields = do
       , fields       = fields
       , cabalPackage = pkgDescrp
       , cabalFile    = absFile
+      , distDir      = distDir
       , packageDB    = pkgDB
       }
 
@@ -76,6 +79,7 @@ fromSourceFile :: FilePath -> F.Fields -> EitherT Error IO Spec
 fromSourceFile file fields = do
    cabalFile   <- findCabalFile file
    pkgDB       <- io $ findPackageDB cabalFile
+   distDir     <- io $ findDistDir cabalFile
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
    right $ Spec
@@ -83,6 +87,7 @@ fromSourceFile file fields = do
       , fields   = fields
       , cabalPackage = pkgDescrp
       , cabalFile    = cabalFile
+      , distDir      = distDir
       , packageDB    = pkgDB
       }
 
@@ -165,19 +170,6 @@ allHsSourceDirs pkgDescrp = map fromBuildInfo buildInfos
       toFPs = map FP.decodeString
 
 
--- | Find the package database of the cabal sandbox from the given cabal file.
---   The returned file path is absolute.
-findPackageDB :: FilePath -> IO (Maybe FilePath)
-findPackageDB cabalFile = do
-   cabalDir <- absoluteDirectory cabalFile
-   files    <- filterM FS.isDirectory =<< (FS.listDirectory (cabalDir </> sandboxDir))
-   return $ FP.encodeString <$> find isPackageDB files
-
-   where
-      isPackageDB file = "packages.conf.d" `isSuffixOf` (FP.encodeString file)
-      sandboxDir       = FP.decodeString ".cabal-sandbox"
-
-
 -- | Find a cabal file starting at the given directory, going upwards the directory
 --   tree until a cabal file could be found. The returned file path is absolute.
 findCabalFile :: FilePath -> EitherT Error IO FilePath
@@ -209,6 +201,38 @@ findCabalFile file = do
          = False
 
       cabalExt = T.pack "cabal"
+
+
+-- | Find the package database of the cabal sandbox from the given cabal file.
+--   The returned file path is absolute.
+findPackageDB :: FilePath -> IO (Maybe FilePath)
+findPackageDB cabalFile = do
+   cabalDir <- absoluteDirectory cabalFile
+   files    <- filterM FS.isDirectory =<< (FS.listDirectory (cabalDir </> sandboxDir))
+   return $ FP.encodeString <$> find isPackageDB files
+
+   where
+      isPackageDB file = "packages.conf.d" `isSuffixOf` (FP.encodeString file)
+      sandboxDir       = FP.decodeString ".cabal-sandbox"
+
+
+-- | Find the dist directory of the cabal build from the given cabal file. For a non sandboxed
+--   build it's just the directory 'dist' in the cabal build directory. For a sandboxed build
+--   it's the directory 'dist/dist-sandbox-*'. The returned file path is absolute.
+findDistDir :: FilePath -> IO (Maybe FilePath)
+findDistDir cabalFile = do
+   cabalDir   <- absoluteDirectory cabalFile
+   let distDir = cabalDir </> FP.decodeString "dist"
+   hasDistDir <- FS.isDirectory distDir
+   if hasDistDir
+      then do
+         files <- filterM FS.isDirectory =<< (FS.listDirectory distDir)
+         return $ FP.encodeString <$> maybe (Just distDir) Just (find isSandboxDistDir files)
+      else return Nothing
+
+   where
+      isSandboxDistDir file =
+         "dist-sandbox-" `isPrefixOf` (FP.encodeString . FP.filename $ file)
 
 
 absoluteDirectory :: FilePath -> IO FP.FilePath

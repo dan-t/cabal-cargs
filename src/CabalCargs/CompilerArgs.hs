@@ -141,14 +141,26 @@ fromSpec spec =
            addArg _ cargs F.Package_Db  =
               cargs & packageDBL %~ (<|> (maybeToList $ Spec.packageDB spec))
 
-           addArg _ cargs F.Autogen_Hs_Source_Dirs =
-              cargs & autogenHsSourceDirsL .~ ["dist/build/autogen"]
+           addArg _ cargs F.Autogen_Hs_Source_Dirs
+              | Just distDir <- Spec.distDir spec
+              = cargs & autogenHsSourceDirsL .~ [distDir ++ "/build/autogen"]
 
-           addArg _ cargs F.Autogen_Include_Dirs =
-              cargs & autogenIncludeDirsL .~ ["dist/build/autogen"]
+              | otherwise
+              = cargs
 
-           addArg _ cargs F.Autogen_Includes =
-              cargs & autogenIncludesL .~ ["cabal_macros.h"]
+           addArg _ cargs F.Autogen_Include_Dirs
+              | Just distDir <- Spec.distDir spec
+              = cargs & autogenIncludeDirsL .~ [distDir ++ "/build/autogen"]
+
+              | otherwise
+              = cargs
+
+           addArg _ cargs F.Autogen_Includes
+              | Just _ <- Spec.distDir spec
+              = cargs & autogenIncludesL .~ ["cabal_macros.h"]
+
+              | otherwise
+              = cargs
 
            addArg buildInfo cargs field =
               cargs & (fieldL field) %~ nub . (++ (cabalPkg ^. buildInfo . (L.field field)))
