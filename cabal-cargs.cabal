@@ -1,12 +1,12 @@
 name: cabal-cargs
-version: 0.1
+version: 0.1.1
 cabal-version: >=1.9.2
 build-type: Simple
 license: BSD3
 license-file: LICENSE
 maintainer: daniel.trstenjak@gmail.com
 synopsis: A command line program for extracting compiler arguments from a cabal file.
-description: A command line program for extracting compiler arguments from a cabal file.
+description: For further details please consult the <https://github.com/dan-t/cabal-cargs README>.
 category: Utils
 author: Daniel Trstenjak
 data-dir: ""
