@@ -5,8 +5,8 @@ cabal-cargs
 arguments from a cabal file and print them out formatted so that they're
 directly usable as arguments for `ghc` or `hdevtools`.
 
-The main motivation was to get a mostly just working default, non
-modified `hdevtools`.
+The main motivation for writing `cabal-cargs` was to get a mostly just working
+default, non modified `hdevtools`.
 
 Example: Cabal and Sandbox aware Hdevtools
 ==========================================
