@@ -4,7 +4,7 @@ module Main where
 import qualified Test.Tasty as T
 import qualified Test.Tasty.Golden as G
 import System.IO (hPutStrLn, stderr)
-import System.FilePath ((</>))
+import System.FilePath ((</>), (<.>))
 import CabalCargs.Args
 import CabalCargs.Formatting
 import qualified CabalCargs.Field as F
@@ -81,8 +81,8 @@ test dir testName args =
                  writeFile outputFile (intercalate " " $ Fmt.format formatting cargs_)
 
       diff ref new = ["diff", "-u", ref, new]
-      goldenFile   = "tests" </> "goldenFiles" </> dir </> testName
-      outputFile   = "tests" </> "outputFiles" </> dir </> testName
+      goldenFile   = "tests" </> "goldenFiles" </> dir </> testName <.> "txt"
+      outputFile   = "tests" </> "outputFiles" </> dir </> testName <.> "txt"
 
 
 defaultArgs :: Args
