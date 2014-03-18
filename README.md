@@ -114,7 +114,7 @@ There are further some special fields:
 
 It's not quite true, that all fields are printed out if not constrained, that's
 only the case for the `pure` formatting option. For the other formatting options
-currently the fields c_sources, extra_libraries and ld_options are ignored.  
+currently the fields `c_sources`, `extra_libraries` and `ld_options` are ignored.  
 
 Also there's one special field for `hdevtools` which is always printed out:
 the used socket file.
