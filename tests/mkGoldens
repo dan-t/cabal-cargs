@@ -26,3 +26,7 @@ cabal-cargs --relative --testsuite=tests --only=ghc_options --cabalfile=inputFil
 cabal-cargs --relative --library --only=hs_source_dirs --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyPureSrcDirsOfLib
 cabal-cargs --relative --executable=cabal-cargs --only=hs_source_dirs --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyPureSrcDirsOfExe
 cabal-cargs --relative --testsuite=tests --only=hs_source_dirs --format=pure --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/OnlyPureSrcDirsOfTest
+
+cabal-cargs --relative --enable=default_false_flag --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/EnableFlag
+cabal-cargs --relative --disable=default_true_flag --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/DisableFlag
+cabal-cargs --relative --enable=default_false_flag --disable=default_true_flag --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/EnableAndDisableFlag

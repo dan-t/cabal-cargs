@@ -16,10 +16,10 @@ source-repository head
     type: git
     location: https://github.com/dan-t/cabal-cargs
  
-flag default-false-flag
+flag default_false_flag
   default: False
 
-flag default-true-flag
+flag default_true_flag
   default: True
 
 library
@@ -33,7 +33,7 @@ library
                      CabalCargs.Sections CabalCargs.CompilerArgs CabalCargs.Lenses
     exposed: True
     buildable: True
-    if flag(default-true-flag)
+    if flag(default_true_flag)
         cpp-options: -DLIB
     hs-source-dirs: lib
     other-modules: Paths_cabal_cargs
@@ -56,5 +56,5 @@ test-suite tests
     buildable: True
     hs-source-dirs: tests
     ghc-options: -W
-    if flag(default-false-flag)
+    if flag(default_false_flag)
         cpp-options: -DTEST

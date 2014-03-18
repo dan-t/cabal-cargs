@@ -52,6 +52,10 @@ testsWithBaseDir dir = T.testGroup dir
    , test dir "OnlyPureSrcDirsOfLib" $ defaultArgs { library = True, cabalFile = cabalFile, only = [F.Hs_Source_Dirs], format = Pure }
    , test dir "OnlyPureSrcDirsOfExe" $ defaultArgs { executable = ["cabal-cargs"], cabalFile = cabalFile, only = [F.Hs_Source_Dirs], format = Pure }
    , test dir "OnlyPureSrcDirsOfTest" $ defaultArgs { testSuite = ["tests"], cabalFile = cabalFile, only = [F.Hs_Source_Dirs], format = Pure }
+
+   , test dir "EnableFlag" $ defaultArgs { cabalFile = cabalFile, enable = ["default_false_flag"] }
+   , test dir "DisableFlag" $ defaultArgs { cabalFile = cabalFile, disable = ["default_true_flag"] }
+   , test dir "EnableAndDisableFlag" $ defaultArgs { cabalFile = cabalFile, enable = ["default_false_flag"], disable = ["default_true_flag"] }
    ]
 
    where
