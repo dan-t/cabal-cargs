@@ -11,7 +11,7 @@ default, non modified `hdevtools`.
 Example: Cabal and Sandbox aware Hdevtools
 ==========================================
 
-If you want to call `hdevtools check` for a source of a cabalized project and
+If you want to call `hdevtools check` for a source file of a cabalized project and
 would like to consider all compiler relevant arguments in the cabal file - like
 `hs-source-dirs`, `ghc-options`, `cpp-options` ... - and also the `cabal sandbox`,
 the you could just use `cabal-cargs` the following way:
@@ -116,7 +116,7 @@ It's not quite true, that all fields are printed out if not constrained, that's
 only the case for the `pure` formatting option. For the other formatting options
 currently the fields c_sources, extra_libraries and ld_options are ignored.  
 
-Also there's one special flag for `hdevtools` which is always printed out:
+Also there's one special field for `hdevtools` which is always printed out:
 the used socket file.
 
 Flags
@@ -143,10 +143,10 @@ for `--format` are:
 * hdevtools
 * pure
 
-`pure` prints the values like they are present in the cabal files and is mostly
+`pure` prints the values like they are present in the cabal file and is mostly
 only useful in conjunction with `--only` to get the value of one cabal field.
 
 Installation
 ============
 
-It's recommended to build `cabal-cargs` in a `cabal sanbox` with: `cabal install cabal-cargs`.
+It's recommended to build `cabal-cargs` in a `cabal sandbox` with: `cabal install cabal-cargs`.
