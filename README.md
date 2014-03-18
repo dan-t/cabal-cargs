@@ -93,24 +93,24 @@ The allowed names are the field names from the cabal file, just the hyphen
 replaced by an underscore e.g.: `hs-source-dirs` -> `hs_source_dirs`.
 
 Currently supported cabal fields are:
-* hs_source_dirs
-* ghc_options
-* default_extensions
-* default_language
-* cpp_options
-* c_sources
-* cc_options
-* extra_lib_dirs
-* extra_libraries
-* ld_options
-* include_dirs
-* includes
+* `hs_source_dirs`
+* `ghc_options`
+* `default_extensions`
+* `default_language`
+* `cpp_options`
+* `c_sources`
+* `cc_options`
+* `extra_lib_dirs`
+* `extra_libraries`
+* `ld_options`
+* `include_dirs`
+* `includes`
 
 There are further some special fields:
-* package_db
-* autogen_hs_source_dirs
-* autogen_include_dirs
-* autogen_includes
+* `package_db`
+* `autogen_hs_source_dirs`
+* `autogen_include_dirs`
+* `autogen_includes`
 
 It's not quite true, that all fields are printed out if not constrained, that's
 only the case for the `pure` formatting option. For the other formatting options
@@ -139,9 +139,9 @@ Formatting
 
 By default the fields are formatted for the `ghc` compiler. The available options
 for `--format` are:
-* ghc
-* hdevtools
-* pure
+* `ghc`
+* `hdevtools`
+* `pure`
 
 `pure` prints the values like they are present in the cabal file and is mostly
 only useful in conjunction with `--only` to get the value of one cabal field.
