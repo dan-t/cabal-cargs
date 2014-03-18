@@ -1,1 +1,1 @@
-lib exe tests -W -DLIB -DEXE -DTEST .cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d dist/dist-sandbox-6d1acfa0/build/autogen dist/dist-sandbox-6d1acfa0/build/autogen cabal_macros.h
+lib exe tests -W -DLIB -DEXE .cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d dist/dist-sandbox-6d1acfa0/build/autogen dist/dist-sandbox-6d1acfa0/build/autogen cabal_macros.h

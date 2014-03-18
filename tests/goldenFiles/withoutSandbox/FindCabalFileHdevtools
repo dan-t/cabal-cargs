@@ -1,1 +1,1 @@
--g-ilib -g-iexe -g-itests -g-W -g-optP-DLIB -g-optP-DEXE -g-optP-DTEST -g -g-idist/build/autogen -g-Idist/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock
+-g-ilib -g-iexe -g-itests -g-W -g-optP-DLIB -g-optP-DEXE -g -g-idist/build/autogen -g-Idist/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock

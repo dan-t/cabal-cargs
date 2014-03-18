@@ -91,5 +91,9 @@ defaultArgs = Args
    , format     = Ghc
    , sourceFile = Nothing
    , cabalFile  = Nothing
+   , enable     = []
+   , disable    = []
+   , os         = Nothing
+   , arch       = Nothing
    , relative   = True
    }

@@ -1,1 +1,1 @@
--g-ilib -g-iexe -g-itests -g-W -g-optP-DLIB -g-optP-DEXE -g-optP-DTEST -g-package-conf=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d -g-idist/dist-sandbox-6d1acfa0/build/autogen -g-Idist/dist-sandbox-6d1acfa0/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock
+-g-ilib -g-iexe -g-itests -g-W -g-optP-DLIB -g-optP-DEXE -g-package-conf=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d -g-idist/dist-sandbox-6d1acfa0/build/autogen -g-Idist/dist-sandbox-6d1acfa0/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock

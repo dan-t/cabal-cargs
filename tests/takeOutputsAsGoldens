@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+dir=$1
+for output in `ls outputFiles/$dir` ; do
+   cp outputFiles/$dir/$output goldenFiles/$dir/$output
+done
