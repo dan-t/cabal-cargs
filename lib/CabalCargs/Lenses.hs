@@ -1,28 +1,25 @@
 {-# LANGUAGE TemplateHaskell, Rank2Types, PatternGuards #-}
 
 module CabalCargs.Lenses
-   ( buildInfoOfLib
-   , buildInfoOfExe
-   , buildInfoOfTest
-   , buildInfoOfBenchm
-   , buildInfoOf
-   , allBuildInfos
+   ( buildInfosOfLib
+   , buildInfosOfExe
+   , buildInfosOfTest
+   , buildInfosOfBenchmark
+   , buildInfosOf
+   , buildInfos
    , field
    ) where
 
 import Distribution.PackageDescription
 import Distribution.Compiler
+import Distribution.Package (Dependency)
 import Language.Haskell.Extension
 import Control.Lens
-import Data.Data.Lens (biplate)
+import Data.List (find)
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Field as F
+import qualified CabalCargs.CondVars as CV
 
-makeLensesFor [ ("condLibrary"    , "condLibraryL")
-              , ("condExecutables", "condExecutablesL")
-              , ("condTestSuites" , "condTestSuitesL")
-              , ("condBenchmarks" , "condBenchmarksL")
-              ] ''GenericPackageDescription
 
 makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               , ("options"          , "optionsL")
@@ -38,42 +35,88 @@ makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
               ] ''BuildInfo
 
 
-buildInfoOfLib :: Traversal' GenericPackageDescription BuildInfo
-buildInfoOfLib = condLibraryL . _Just . biplate
+buildInfosOf :: S.Section -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOf S.Library           = buildInfosOfLib
+buildInfosOf (S.Executable name) = buildInfosOfExe name
+buildInfosOf (S.TestSuite name)  = buildInfosOfTest name
+buildInfosOf (S.Benchmark name)  = buildInfosOfBenchmark name
 
 
-buildInfoOfExe :: String -> Traversal' GenericPackageDescription BuildInfo
-buildInfoOfExe name = condExecutablesL 
-                      . traversed 
-                      . filtered ((== name) . fst) 
-                      . _2 . biplate
+buildInfos :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfos vars pkgDescrp =
+   concat [ buildInfosOfLib vars pkgDescrp
+          , buildInfosOfAllExes vars pkgDescrp
+          , buildInfosOfAllTests vars pkgDescrp
+          , buildInfosOfAllBenchmarks vars pkgDescrp
+          ]
 
 
-buildInfoOfTest:: String -> Traversal' GenericPackageDescription BuildInfo
-buildInfoOfTest name = condTestSuitesL
-                       . traversed 
-                       . filtered ((== name) . fst) 
-                       . _2 . biplate 
+buildInfosOfLib :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfLib vars pkgDescrp
+   | Just condLib <- condLibrary pkgDescrp
+   = map libBuildInfo $ condTreeDatas vars condLib
+
+   | otherwise
+   = []
 
 
-buildInfoOfBenchm :: String -> Traversal' GenericPackageDescription BuildInfo
-buildInfoOfBenchm name = condBenchmarksL
-                         . traversed 
-                         . filtered ((== name) . fst) 
-                         . _2 . biplate
+buildInfosOfExe :: String -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfExe name vars pkgDescrp
+   | Just (_, condExe) <- find ((== name) . fst) $ condExecutables pkgDescrp
+   = map buildInfo $ condTreeDatas vars condExe
+
+   | otherwise
+   = []
 
 
-buildInfoOf :: S.Section -> Traversal' GenericPackageDescription BuildInfo
-buildInfoOf S.Library           = buildInfoOfLib
-buildInfoOf (S.Executable name) = buildInfoOfExe name
-buildInfoOf (S.TestSuite name)  = buildInfoOfTest name
-buildInfoOf (S.Benchmark name)  = buildInfoOfBenchm name
+buildInfosOfAllExes :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfAllExes vars pkgDescrp =
+   concat $ map ((map buildInfo) . (condTreeDatas vars) . snd) (condExecutables pkgDescrp)
 
 
--- | A traversal to visit all 'BuildInfo' of the 'GenericPackageDescription',
---   this includes all sections and also the conditional branches in the cabal file.
-allBuildInfos :: Traversal' GenericPackageDescription BuildInfo
-allBuildInfos = biplate
+buildInfosOfTest :: String -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfTest name vars pkgDescrp
+   | Just (_, condTest) <- find ((== name) . fst) $ condTestSuites pkgDescrp
+   = map testBuildInfo $ condTreeDatas vars condTest
+
+   | otherwise
+   = []
+
+
+buildInfosOfAllTests :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfAllTests vars pkgDescrp =
+   concat $ map ((map testBuildInfo) . (condTreeDatas vars) . snd) (condTestSuites pkgDescrp)
+
+
+buildInfosOfBenchmark :: String -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfBenchmark name vars pkgDescrp
+   | Just (_, condBench) <- find ((== name) . fst) $ condBenchmarks pkgDescrp
+   = map benchmarkBuildInfo $ condTreeDatas vars condBench
+
+   | otherwise
+   = []
+
+
+buildInfosOfAllBenchmarks :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
+buildInfosOfAllBenchmarks vars pkgDescrp =
+   concat $ map ((map benchmarkBuildInfo) . (condTreeDatas vars) . snd) (condBenchmarks pkgDescrp)
+
+
+-- | Returns all 'condTreeData' of the 'CondTree' which conditions match the given 'CondVars'. 
+condTreeDatas :: CV.CondVars -> CondTree ConfVar [Dependency] a -> [a]
+condTreeDatas vars tree = go (condTreeComponents tree) [condTreeData tree]
+   where
+      go [] dats = dats
+
+      go ((cond, ifTree, elseTree) : comps) dats
+         | CV.eval vars cond
+         = go comps $ go (condTreeComponents ifTree) (condTreeData ifTree : dats)
+
+         | Just tree <- elseTree
+         = go comps $ go (condTreeComponents tree) (condTreeData tree : dats)
+
+         | otherwise
+         = go comps dats
 
 
 -- | A lens from a 'BuildInfo' to a list of stringified field entries of the 'BuildInfo'.

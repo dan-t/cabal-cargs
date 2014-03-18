@@ -2,8 +2,6 @@
 
 module CabalCargs.CompilerArgs
    ( CompilerArgs(..)
-   , fromSourceFile
-   , fromCabalFile
    , fromCmdArgs
    , fromSpec
    ) where
@@ -69,41 +67,8 @@ makeLensesFor [ ("hsSourceDirs"       , "hsSourceDirsL")
 
 type Error = String
 
--- | Create a 'CompilerArgs' from the given cabal file, sections and fields.
---
---   If a cabal sandbox is present in the directory of the cabal file, then
---   the path to its package database is also returned.
---
---   The compiler arguments are collected according to the given sections and fields.
-fromCabalFile :: FilePath -> S.Sections -> Fs.Fields -> IO (Either Error CompilerArgs)
-fromCabalFile file sections fields = runEitherT $ do
-   fromSpec <$> Spec.fromCabalFile file sections fields
-
-
--- | Create a 'CompilerArgs' from the given source file and fields.
---
---   Starting at the directory of the source file a cabal file is searched
---   upwards the directory tree.
---
---   The found cabal file is searched for a fitting section for the source file.
---   If no fitting section could be found, then all sections are used.
---
---   If a cabal sandbox is present in the directory of the cabal file, then
---   the path to its package database is also returned.
---
---   The compiler arguments are collected according to the determined
---   section and the given fields.
-fromSourceFile :: FilePath -> Fs.Fields -> IO (Either Error CompilerArgs)
-fromSourceFile file fields = runEitherT $ do
-   fromSpec <$> Spec.fromSourceFile file fields
-
 
 -- | Create a 'CompilerArgs' by the command line arguments given to 'cabal-cargs'.
---
---   Depending on the command line arguments 'fromCmdArgs' might behave like
---   'fromCabalFile', if only a cabal file was given, like 'fromSourceFile',
---   if only a source file was given or like a mix of both, if a cabal file
---   and a source file have been given.
 fromCmdArgs :: A.Args -> IO (Either Error CompilerArgs)
 fromCmdArgs args = runEitherT $ do
    fromSpec <$> Spec.fromCmdArgs args
@@ -117,7 +82,7 @@ fromSpec spec =
            setCabalFile $ absolutePaths $ foldl' collectFromSection compilerArgs sections
 
         S.AllSections ->
-           setCabalFile $ absolutePaths $ collectFields L.allBuildInfos compilerArgs
+           setCabalFile $ absolutePaths $ collectFields buildInfos compilerArgs
 
    where
       compilerArgs = defaultCompilerArgs { relativePaths = Spec.relativePaths spec }
@@ -141,42 +106,46 @@ fromSpec spec =
             cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
 
       collectFromSection cargs section =
-         collectFields (L.buildInfoOf section) cargs
+         collectFields (buildInfosOf section) cargs
 
-      collectFields buildInfo cargs =
-        foldl' (addArg buildInfo) cargs fields
+      collectFields buildInfos cargs =
+        foldl' (addCarg buildInfos) cargs fields
         where
-           addArg _ cargs F.Package_Db  =
+           addCarg _ cargs F.Package_Db  =
               cargs & packageDBL .~ (maybeToList $ Spec.packageDB spec)
 
-           addArg _ cargs F.Autogen_Hs_Source_Dirs
+           addCarg _ cargs F.Autogen_Hs_Source_Dirs
               | Just distDir <- Spec.distDir spec
               = cargs & autogenHsSourceDirsL .~ [distDir ++ "/build/autogen"]
 
               | otherwise
               = cargs
 
-           addArg _ cargs F.Autogen_Include_Dirs
+           addCarg _ cargs F.Autogen_Include_Dirs
               | Just distDir <- Spec.distDir spec
               = cargs & autogenIncludeDirsL .~ [distDir ++ "/build/autogen"]
 
               | otherwise
               = cargs
 
-           addArg _ cargs F.Autogen_Includes
+           addCarg _ cargs F.Autogen_Includes
               | Just _ <- Spec.distDir spec
               = cargs & autogenIncludesL .~ ["cabal_macros.h"]
 
               | otherwise
               = cargs
 
-           addArg buildInfo cargs field =
-              cargs & (fieldL field) %~ nub . (++ (cabalPkg ^. buildInfo . (L.field field)))
+           addCarg buildInfos cargs field =
+              cargs & (fieldL field) %~ nub . (++ buildInfoFields)
+              where
+                 buildInfoFields = concat $ map (^. L.field field) buildInfos 
 
-           cabalPkg = Spec.cabalPackage spec
            fields   = case Spec.fields spec of
                            Fs.Fields fs -> fs
                            _            -> F.allFields
+
+      buildInfos           = L.buildInfos (Spec.condVars spec) (Spec.cabalPackage spec)
+      buildInfosOf section = L.buildInfosOf section (Spec.condVars spec) (Spec.cabalPackage spec) 
 
 
 packageDBL :: Lens' CompilerArgs [String]

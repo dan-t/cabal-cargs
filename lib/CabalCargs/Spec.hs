@@ -2,25 +2,24 @@
 
 module CabalCargs.Spec
    ( Spec(..)
-   , fromCabalFile
-   , fromSourceFile
    , fromCmdArgs
    ) where
 
 import Distribution.PackageDescription (GenericPackageDescription)
 import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
+import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)
 import qualified CabalCargs.Lenses as L
 import qualified CabalCargs.Args as A
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Fields as F
+import qualified CabalCargs.CondVars as CV
 import qualified System.IO.Strict as Strict
 import Control.Monad.Trans.Either (EitherT, left, right)
 import Control.Monad.IO.Class
 import Control.Monad (filterM)
 import Control.Applicative ((<$>))
-import Control.Lens
 import System.Directory (getCurrentDirectory)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
@@ -34,6 +33,7 @@ import Data.Maybe (isJust)
 data Spec = Spec 
    { sections      :: S.Sections                -- ^ the sections used for collecting the compiler args
    , fields        :: F.Fields                  -- ^ for these fields compiler args are collected
+   , condVars      :: CV.CondVars               -- ^ used for the evaluation of the conditional fields in the cabal file
    , cabalPackage  :: GenericPackageDescription -- ^ the package description of the read in cabal file
    , cabalFile     :: FilePath                  -- ^ the cabal file read from
    , distDir       :: Maybe FilePath            -- ^ the dist directory of the cabal build, a relative path to the directory of the cabal file
@@ -44,6 +44,45 @@ data Spec = Spec
 
 type Error = String
 io = liftIO 
+
+
+-- | Create a 'Spec' by the command line arguments given to 'cabal-cargs'.
+--
+--   Depending on the command line arguments 'fromCmdArgs' might behave like
+--   'fromCabalFile', if only a cabal file was given, like 'fromSourceFile',
+--   if only a source file was given or like a mix of both, if a cabal file
+--   and a source file have been given.
+fromCmdArgs :: Args -> EitherT Error IO Spec
+fromCmdArgs args
+   | Just cabalFile <- A.cabalFile args = do
+      spec        <- fromCabalFile cabalFile (S.sections args) (F.fields args)
+      srcSections <- io $ case A.sourceFile args of
+                               Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
+                               _            -> return []
+
+      right $ applyCondVars $ spec { sections      = combineSections (sections spec) srcSections
+                                   , relativePaths = A.relative args
+                                   }
+
+   | Just sourceFile <- A.sourceFile args = do
+      spec <- fromSourceFile sourceFile (F.fields args)
+      let specSections = case sections spec of
+                              S.Sections ss -> ss
+                              _             -> []
+
+      right $ applyCondVars $ spec { sections      = combineSections (S.sections args) specSections
+                                   , relativePaths = A.relative args
+                                   }
+
+   | otherwise = do
+      curDir    <- io $ getCurrentDirectory
+      cabalFile <- findCabalFile curDir
+      spec      <- fromCabalFile cabalFile (S.sections args) (F.fields args)
+      right $ applyCondVars $ spec { relativePaths = A.relative args }
+
+   where
+      applyCondVars = applyFlags args . applyOS args . applyArch args
+
 
 
 -- | Create a 'Spec' from the given cabal file, sections and fields.
@@ -59,6 +98,7 @@ fromCabalFile file sections fields = do
    right $ Spec
       { sections      = sections
       , fields        = fields
+      , condVars      = CV.fromDefaults pkgDescrp
       , cabalPackage  = pkgDescrp
       , cabalFile     = absFile
       , distDir       = distDir
@@ -87,6 +127,7 @@ fromSourceFile file fields = do
    right $ Spec
       { sections = combineSections S.AllSections srcSections
       , fields        = fields
+      , condVars      = CV.fromDefaults pkgDescrp
       , cabalPackage  = pkgDescrp
       , cabalFile     = cabalFile
       , distDir       = distDir
@@ -95,39 +136,44 @@ fromSourceFile file fields = do
       }
 
 
--- | Create a 'Spec' by the command line arguments given to 'cabal-cargs'.
---
---   Depending on the command line arguments 'fromCmdArgs' might behave like
---   'fromCabalFile', if only a cabal file was given, like 'fromSourceFile',
---   if only a source file was given or like a mix of both, if a cabal file
---   and a source file have been given.
-fromCmdArgs :: Args -> EitherT Error IO Spec
-fromCmdArgs args
-   | Just cabalFile <- A.cabalFile args = do
-      spec        <- fromCabalFile cabalFile (S.sections args) (F.fields args)
-      srcSections <- io $ case A.sourceFile args of
-                               Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
-                               _            -> return []
+applyFlags :: Args -> Spec -> Spec
+applyFlags args spec =
+   spec { condVars = disableFlags . enableFlags $ condVars spec }
+   where
+      disableFlags condVars = foldr CV.disableFlag condVars (A.disable args)
+      enableFlags  condVars = foldr CV.enableFlag condVars (A.enable args)
 
-      right $ spec { sections      = combineSections (sections spec) srcSections
-                   , relativePaths = A.relative args 
-                   }
 
-   | Just sourceFile <- A.sourceFile args = do
-      spec <- fromSourceFile sourceFile (F.fields args)
-      let specSections = case sections spec of
-                              S.Sections ss -> ss
-                              _             -> []
+applyOS :: Args -> Spec -> Spec
+applyOS (A.Args { A.os = os }) spec
+   | Just str    <- os
+   , [(name, _)] <- reads str :: [(Sys.OS, String)]
+   = setOS name
 
-      right $ spec { sections      = combineSections (S.sections args) specSections
-                   , relativePaths = A.relative args
-                   }
+   | Just str    <- os
+   = setOS $ Sys.OtherOS str
 
-   | otherwise = do
-      curDir    <- io $ getCurrentDirectory
-      cabalFile <- findCabalFile curDir
-      spec      <- fromCabalFile cabalFile (S.sections args) (F.fields args)
-      right $ spec { relativePaths = A.relative args }
+   | otherwise
+   = spec
+
+   where
+      setOS name = spec { condVars = (condVars spec) { CV.os = name } }
+
+
+applyArch :: Args -> Spec -> Spec
+applyArch (A.Args { A.arch = arch }) spec
+   | Just str    <- arch
+   , [(name, _)] <- reads str :: [(Sys.Arch, String)]
+   = setArch name
+
+   | Just str    <- arch
+   = setArch $ Sys.OtherArch str
+
+   | otherwise
+   = spec
+
+   where
+      setArch name = spec { condVars = (condVars spec) { CV.arch = name } }
 
 
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
@@ -162,20 +208,22 @@ type HsSourceDirs = [FP.FilePath]
 allHsSourceDirs :: GenericPackageDescription -> [(S.Section, HsSourceDirs)]
 allHsSourceDirs pkgDescrp = map fromBuildInfo buildInfos
    where
-      fromBuildInfo (section, buildInfo) =
-         (section, toFPs $ PD.hsSourceDirs (pkgDescrp ^. buildInfo))
+      fromBuildInfo (section, buildInfos) =
+         (section, toFPs $ concat $ (map PD.hsSourceDirs) (buildInfos condVars pkgDescrp))
 
-      buildInfos = concat [ [ (S.Library, L.buildInfoOfLib) | isJust $ PD.condLibrary pkgDescrp ]
+      buildInfos = concat [ [ (S.Library, L.buildInfosOfLib) | isJust $ PD.condLibrary pkgDescrp ]
                           , map fromExe (PD.condExecutables pkgDescrp)
                           , map fromTest (PD.condTestSuites pkgDescrp)
                           , map fromBenchm (PD.condBenchmarks pkgDescrp)
                           ]
 
-      fromExe (name, _)    = (S.Executable name, L.buildInfoOfExe name)
-      fromTest (name, _)   = (S.TestSuite name, L.buildInfoOfTest name)
-      fromBenchm (name, _) = (S.Benchmark name, L.buildInfoOfBenchm name)
+      fromExe (name, _)    = (S.Executable name, L.buildInfosOfExe name)
+      fromTest (name, _)   = (S.TestSuite name, L.buildInfosOfTest name)
+      fromBenchm (name, _) = (S.Benchmark name, L.buildInfosOfBenchmark name)
 
       toFPs = map FP.decodeString
+
+      condVars = CV.fromDefaults pkgDescrp
 
 
 -- | Find a cabal file starting at the given directory, going upwards the directory
