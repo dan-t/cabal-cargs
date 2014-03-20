@@ -12,7 +12,7 @@ import qualified CabalCargs.Args as A
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Field as F
 import qualified CabalCargs.Fields as Fs
-import qualified CabalCargs.Lenses as L
+import qualified CabalCargs.BuildInfo as B
 import Data.List (nub, foldl')
 import Data.Maybe (maybeToList)
 import Control.Applicative ((<$>))
@@ -138,14 +138,14 @@ fromSpec spec =
            addCarg buildInfos cargs field =
               cargs & (fieldL field) %~ nub . (++ buildInfoFields)
               where
-                 buildInfoFields = concat $ map (^. L.field field) buildInfos 
+                 buildInfoFields = concat $ map (^. B.field field) buildInfos
 
            fields   = case Spec.fields spec of
                            Fs.Fields fs -> fs
                            _            -> F.allFields
 
-      buildInfos           = L.buildInfos (Spec.condVars spec) (Spec.cabalPackage spec)
-      buildInfosOf section = L.buildInfosOf section (Spec.condVars spec) (Spec.cabalPackage spec) 
+      buildInfos           = B.buildInfos (Spec.condVars spec) (Spec.cabalPackage spec)
+      buildInfosOf section = B.buildInfosOf section (Spec.condVars spec) (Spec.cabalPackage spec)
 
 
 packageDBL :: Lens' CompilerArgs [String]

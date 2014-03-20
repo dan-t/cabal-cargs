@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell, Rank2Types, PatternGuards #-}
 
-module CabalCargs.Lenses
+module CabalCargs.BuildInfo
    ( buildInfosOfLib
    , buildInfosOfExe
    , buildInfosOfTest

@@ -41,7 +41,7 @@ library
                    Cabal >=1.18.0 && <1.19
     exposed-modules: CabalCargs.Args CabalCargs.Field CabalCargs.Fields
                      CabalCargs.Formatting CabalCargs.Format CabalCargs.Spec
-                     CabalCargs.Sections CabalCargs.CompilerArgs CabalCargs.Lenses
+                     CabalCargs.Sections CabalCargs.CompilerArgs CabalCargs.BuildInfo
                      CabalCargs.CondVars
     exposed: True
     buildable: True

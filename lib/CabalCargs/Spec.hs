@@ -10,7 +10,7 @@ import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
 import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)
-import qualified CabalCargs.Lenses as L
+import qualified CabalCargs.BuildInfo as B
 import qualified CabalCargs.Args as A
 import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Fields as F
@@ -211,15 +211,15 @@ allHsSourceDirs pkgDescrp = map fromBuildInfo buildInfos
       fromBuildInfo (section, buildInfos) =
          (section, toFPs $ concat $ (map PD.hsSourceDirs) (buildInfos condVars pkgDescrp))
 
-      buildInfos = concat [ [ (S.Library, L.buildInfosOfLib) | isJust $ PD.condLibrary pkgDescrp ]
+      buildInfos = concat [ [ (S.Library, B.buildInfosOfLib) | isJust $ PD.condLibrary pkgDescrp ]
                           , map fromExe (PD.condExecutables pkgDescrp)
                           , map fromTest (PD.condTestSuites pkgDescrp)
                           , map fromBenchm (PD.condBenchmarks pkgDescrp)
                           ]
 
-      fromExe (name, _)    = (S.Executable name, L.buildInfosOfExe name)
-      fromTest (name, _)   = (S.TestSuite name, L.buildInfosOfTest name)
-      fromBenchm (name, _) = (S.Benchmark name, L.buildInfosOfBenchmark name)
+      fromExe (name, _)    = (S.Executable name, B.buildInfosOfExe name)
+      fromTest (name, _)   = (S.TestSuite name, B.buildInfosOfTest name)
+      fromBenchm (name, _) = (S.Benchmark name, B.buildInfosOfBenchmark name)
 
       toFPs = map FP.decodeString
 
