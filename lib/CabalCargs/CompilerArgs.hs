@@ -17,7 +17,6 @@ import Data.List (nub, foldl')
 import Data.Maybe (maybeToList)
 import Control.Applicative ((<$>))
 import Control.Lens
-import Control.Monad.Trans.Either (runEitherT)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path ((</>))
 
@@ -70,8 +69,7 @@ type Error = String
 
 -- | Create a 'CompilerArgs' by the command line arguments given to 'cabal-cargs'.
 fromCmdArgs :: A.Args -> IO (Either Error CompilerArgs)
-fromCmdArgs args = runEitherT $ do
-   fromSpec <$> Spec.fromCmdArgs args
+fromCmdArgs args = (fromSpec <$>) <$> Spec.fromCmdArgs args
 
 
 -- | Create a 'CompilerArgs' and collect the compiler args specified by 'Spec'.

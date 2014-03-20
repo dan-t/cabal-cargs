@@ -16,7 +16,7 @@ import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Fields as F
 import qualified CabalCargs.CondVars as CV
 import qualified System.IO.Strict as Strict
-import Control.Monad.Trans.Either (EitherT, left, right)
+import Control.Monad.Trans.Either (EitherT, left, right, runEitherT)
 import Control.Monad.IO.Class
 import Control.Monad (filterM)
 import Control.Applicative ((<$>))
@@ -52,9 +52,9 @@ io = liftIO
 --   'fromCabalFile', if only a cabal file was given, like 'fromSourceFile',
 --   if only a source file was given or like a mix of both, if a cabal file
 --   and a source file have been given.
-fromCmdArgs :: Args -> EitherT Error IO Spec
+fromCmdArgs :: Args -> IO (Either Error Spec)
 fromCmdArgs args
-   | Just cabalFile <- A.cabalFile args = do
+   | Just cabalFile <- A.cabalFile args = runEitherT $ do
       spec        <- fromCabalFile cabalFile (S.sections args) (F.fields args)
       srcSections <- io $ case A.sourceFile args of
                                Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
@@ -64,7 +64,7 @@ fromCmdArgs args
                                    , relativePaths = A.relative args
                                    }
 
-   | Just sourceFile <- A.sourceFile args = do
+   | Just sourceFile <- A.sourceFile args = runEitherT $ do
       spec <- fromSourceFile sourceFile (F.fields args)
       let specSections = case sections spec of
                               S.Sections ss -> ss
@@ -74,7 +74,7 @@ fromCmdArgs args
                                    , relativePaths = A.relative args
                                    }
 
-   | otherwise = do
+   | otherwise = runEitherT $ do
       curDir    <- io $ getCurrentDirectory
       cabalFile <- findCabalFile curDir
       spec      <- fromCabalFile cabalFile (S.sections args) (F.fields args)
