@@ -14,7 +14,7 @@ Example: Cabal and Sandbox aware Hdevtools
 If you want to call `hdevtools check` for a source file of a cabalized project and
 would like to consider all compiler relevant arguments in the cabal file - like
 `hs-source-dirs`, `ghc-options`, `cpp-options` ... - and also the `cabal sandbox`,
-the you could just use `cabal-cargs` the following way:
+then you could just use `cabal-cargs` the following way:
 
     $> hdevtools check `cabal-cargs --format=hdevtools --sourcefile=Source.hs` Source.hs
 
