@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+dirs="withSandbox withoutSandbox"
+for dir in $dirs ; do
+   for output in `ls outputFiles/$dir` ; do
+      outputFile=outputFiles/$dir/$output
+      goldenFile=goldenFiles/$dir/$output
+      # only call gvimdiff on files having a difference
+      diff $outputFile $goldenFile > /dev/null || gvimdiff -f $outputFile $goldenFile
+   done
+done
