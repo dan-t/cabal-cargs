@@ -1,1 +1,1 @@
-lib -W -DLIB dist/build/autogen dist/build/autogen cabal_macros.h
+lib -W -DLIB dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock

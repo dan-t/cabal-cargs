@@ -1,1 +1,1 @@
--g-iexe -g-W -g-optP-DEXE -g -g-idist/build/autogen -g-Idist/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock
+-g-iexe -g-W -g-optP-DEXE -g-idist/build/autogen -g-Idist/build/autogen -g-optP-include -g-optPcabal_macros.h --socket=.hdevtools.sock

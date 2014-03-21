@@ -1,1 +1,1 @@
--iexe -W -optP-DEXE  -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h
+-iexe -W -optP-DEXE -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h
