@@ -111,13 +111,12 @@ There are further some special fields:
 * `autogen_hs_source_dirs`
 * `autogen_include_dirs`
 * `autogen_includes`
+* `hdevtools_socket`
 
 It's not quite true, that all fields are printed out if not constrained, that's
 only the case for the `pure` formatting option. For the other formatting options
-currently the fields `c_sources`, `extra_libraries` and `ld_options` are ignored.  
-
-Also there's one special field for `hdevtools` which is always printed out:
-the used socket file.
+currently the fields `c_sources`, `extra_libraries` and `ld_options` are ignored
+and additionally the `ghc` formatting option ignores the `hdevtools_socket` field.
 
 Flags
 =====
