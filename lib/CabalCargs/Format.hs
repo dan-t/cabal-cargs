@@ -8,8 +8,6 @@ import CabalCargs.CompilerArgs (CompilerArgs(..))
 import CabalCargs.Formatting (Formatting(..))
 import Data.Maybe (maybeToList)
 import Data.List (foldl')
-import qualified Filesystem.Path.CurrentOS as FP
-import Filesystem.Path ((</>))
 
 
 format :: Formatting -> CompilerArgs -> [String]
@@ -23,7 +21,7 @@ format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
                           , map ("-l" ++) (extraLibraries cargs)
                           , formatIncludeDirs $ includeDirs cargs
                           , formatIncludes $ includes cargs
-                          , maybe [""] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
+                          , maybe [] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
                           , formatHsSourceDirs $ autogenHsSourceDirs cargs
                           , formatIncludeDirs $ autogenIncludeDirs cargs
                           , formatIncludes $ autogenIncludes cargs
@@ -39,13 +37,7 @@ format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
 
 format Hdevtools cargs = (map ("-g" ++) (format Ghc cargs)) ++ socket
    where
-      socket = ["--socket=" ++ socketFile]
-      socketFile
-         | relativePaths cargs
-         = ".hdevtools.sock"
-
-         | otherwise
-         = prependCabalDir cargs ".hdevtools.sock"
+      socket = maybe [] (\s -> ["--socket=" ++ s]) (hdevtoolsSocket cargs)
 
 
 format Pure cargs = concat [ hsSourceDirs cargs
@@ -64,10 +56,5 @@ format Pure cargs = concat [ hsSourceDirs cargs
                            , autogenHsSourceDirs cargs
                            , autogenIncludeDirs cargs
                            , autogenIncludes cargs
+                           , maybeToList $ hdevtoolsSocket cargs
                            ]
-
-
-prependCabalDir :: CompilerArgs -> String -> String
-prependCabalDir cargs path = FP.encodeString $ cabalDir </> (FP.decodeString path)
-   where
-      cabalDir = FP.directory $ FP.decodeString (cabalFile cargs)

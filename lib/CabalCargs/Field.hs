@@ -29,6 +29,8 @@ data Field = Hs_Source_Dirs
            | Autogen_Hs_Source_Dirs -- ^ dirs of automatically generated haskell source files by cabal (e.g. Paths_*)
            | Autogen_Include_Dirs   -- ^ dirs of automatically generated include files by cabal
            | Autogen_Includes       -- ^ automatically generated include files by cabal (e.g. cabal_macros.h)
+
+           | Hdevtools_Socket       -- ^ the socket file for hdevtools
            deriving (Data, Typeable, Show, Eq, Enum, Bounded)
 
 

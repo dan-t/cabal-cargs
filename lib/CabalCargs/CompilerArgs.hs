@@ -14,7 +14,6 @@ import qualified CabalCargs.Field as F
 import qualified CabalCargs.Fields as Fs
 import qualified CabalCargs.BuildInfo as B
 import Data.List (nub, foldl')
-import Data.Maybe (maybeToList)
 import Control.Applicative ((<$>))
 import Control.Lens
 import qualified Filesystem.Path.CurrentOS as FP
@@ -41,8 +40,7 @@ data CompilerArgs = CompilerArgs
    , autogenHsSourceDirs :: [FilePath]     -- ^ dirs of automatically generated haskell source files by cabal (e.g. Paths_*)
    , autogenIncludeDirs  :: [FilePath]     -- ^ dirs of automatically generated include files by cabal
    , autogenIncludes     :: [String]       -- ^ automatically generated include files by cabal (e.g. cabal_macros.h)
-   , cabalFile           :: FilePath       -- ^ path to the used cabal file
-   , relativePaths       :: Bool           -- ^ if all returned paths are relative to the directory of the cabal file, otherwise all paths are absolute
+   , hdevtoolsSocket     :: Maybe FilePath -- ^ the path to the hdevtools socket file
    }
    deriving (Show, Eq)
 
@@ -59,9 +57,11 @@ makeLensesFor [ ("hsSourceDirs"       , "hsSourceDirsL")
               , ("ldOptions"          , "ldOptionsL")
               , ("includeDirs"        , "includeDirsL")
               , ("includes"           , "includesL")
+              , ("packageDB"          , "packageDBL")
               , ("autogenHsSourceDirs", "autogenHsSourceDirsL")
               , ("autogenIncludeDirs" , "autogenIncludeDirsL")
               , ("autogenIncludes"    , "autogenIncludesL")
+              , ("hdevtoolsSocket"    , "hdevtoolsSocketL")
               ] ''CompilerArgs
 
 type Error = String
@@ -77,28 +77,25 @@ fromSpec :: Spec -> CompilerArgs
 fromSpec spec =
    case Spec.sections spec of
         S.Sections sections ->
-           setCabalFile $ absolutePaths $ foldl' collectFromSection compilerArgs sections
+           absolutePaths $ foldl' collectFromSection defaultCompilerArgs sections
 
         S.AllSections ->
-           setCabalFile $ absolutePaths $ collectFields buildInfos compilerArgs
+           absolutePaths $ collectFields buildInfos defaultCompilerArgs
 
    where
-      compilerArgs = defaultCompilerArgs { relativePaths = Spec.relativePaths spec }
-
-      setCabalFile cargs = cargs { cabalFile = Spec.cabalFile spec }
-
       absolutePaths cargs
          | Spec.relativePaths spec
          = cargs
 
          | otherwise
-         = cargs & hsSourceDirsL        %~ map prependCabalDir
-                 & cSourcesL            %~ map prependCabalDir
-                 & extraLibDirsL        %~ map prependCabalDir
-                 & includeDirsL         %~ map prependCabalDir
-                 & autogenHsSourceDirsL %~ map prependCabalDir
-                 & autogenIncludeDirsL  %~ map prependCabalDir
-                 & packageDBL           %~ map prependCabalDir
+         = cargs & hsSourceDirsL            %~ map prependCabalDir
+                 & cSourcesL                %~ map prependCabalDir
+                 & extraLibDirsL            %~ map prependCabalDir
+                 & includeDirsL             %~ map prependCabalDir
+                 & autogenHsSourceDirsL     %~ map prependCabalDir
+                 & autogenIncludeDirsL      %~ map prependCabalDir
+                 & packageDBL . _Just       %~ prependCabalDir
+                 & hdevtoolsSocketL . _Just %~ prependCabalDir
          where
             prependCabalDir path = FP.encodeString $ cabalDir </> FP.decodeString path
             cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
@@ -110,7 +107,7 @@ fromSpec spec =
         foldl' (addCarg buildInfos) cargs fields
         where
            addCarg _ cargs F.Package_Db  =
-              cargs & packageDBL .~ (maybeToList $ Spec.packageDB spec)
+              cargs & packageDBL .~ Spec.packageDB spec
 
            addCarg _ cargs F.Autogen_Hs_Source_Dirs
               | Just distDir <- Spec.distDir spec
@@ -133,26 +130,20 @@ fromSpec spec =
               | otherwise
               = cargs
 
+           addCarg _ cargs F.Hdevtools_Socket =
+              cargs & hdevtoolsSocketL .~ Just ".hdevtools.sock"
+
            addCarg buildInfos cargs field =
               cargs & (fieldL field) %~ nub . (++ buildInfoFields)
               where
                  buildInfoFields = concat $ map (^. B.field field) buildInfos
 
-           fields   = case Spec.fields spec of
-                           Fs.Fields fs -> fs
-                           _            -> F.allFields
+           fields = case Spec.fields spec of
+                         Fs.Fields fs -> fs
+                         _            -> F.allFields
 
       buildInfos           = B.buildInfos (Spec.condVars spec) (Spec.cabalPackage spec)
       buildInfosOf section = B.buildInfosOf section (Spec.condVars spec) (Spec.cabalPackage spec)
-
-
-packageDBL :: Lens' CompilerArgs [String]
-packageDBL = lens getter setter
-   where
-      getter = maybeToList . packageDB
-
-      setter cargs [db@(_:_)] = cargs { packageDB = Just db }
-      setter cargs          _ = cargs
 
 
 fieldL :: F.Field -> Lens' CompilerArgs [String]
@@ -168,10 +159,11 @@ fieldL F.Extra_Libraries        = extraLibrariesL
 fieldL F.Ld_Options             = ldOptionsL
 fieldL F.Include_Dirs           = includeDirsL
 fieldL F.Includes               = includesL
-fieldL F.Package_Db             = packageDBL
+fieldL F.Package_Db             = error $ "Unexpected field Package_Db for CabalCargs.CompilerArgs.fieldL!"
 fieldL F.Autogen_Hs_Source_Dirs = autogenHsSourceDirsL
 fieldL F.Autogen_Include_Dirs   = autogenIncludeDirsL
 fieldL F.Autogen_Includes       = autogenIncludesL
+fieldL F.Hdevtools_Socket       = error $ "Unexpected field Hdevtools_Socket for CabalCargs.CompilerArgs.fieldL!"
 
 
 defaultCompilerArgs :: CompilerArgs
@@ -188,10 +180,9 @@ defaultCompilerArgs = CompilerArgs
    , ldOptions           = []
    , includeDirs         = []
    , includes            = []
-   , cabalFile           = ""
    , packageDB           = Nothing
    , autogenHsSourceDirs = []
    , autogenIncludeDirs  = []
    , autogenIncludes     = []
-   , relativePaths       = False
+   , hdevtoolsSocket     = Nothing
    }

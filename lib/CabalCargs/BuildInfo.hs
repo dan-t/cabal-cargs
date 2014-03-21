@@ -137,6 +137,7 @@ field F.Package_Db             = nopLens
 field F.Autogen_Hs_Source_Dirs = nopLens
 field F.Autogen_Include_Dirs   = nopLens
 field F.Autogen_Includes       = nopLens
+field F.Hdevtools_Socket       = nopLens
 
 
 -- | A lens that merges the fields 'default-extensions' and 'extensions',
