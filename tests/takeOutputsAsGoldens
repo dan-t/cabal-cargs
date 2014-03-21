@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-dir=$1
-for output in `ls outputFiles/$dir` ; do
-   cp outputFiles/$dir/$output goldenFiles/$dir/$output
+dirs="withSandbox withoutSandbox"
+for dir in $dirs ; do
+   for output in `ls outputFiles/$dir` ; do
+      cp outputFiles/$dir/$output goldenFiles/$dir/$output
+   done
 done
