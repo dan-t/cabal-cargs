@@ -1,5 +1,5 @@
 name: cabal-cargs
-version: 0.3
+version: 0.3.1
 cabal-version: >=1.9.2
 build-type: Simple
 license: BSD3
@@ -20,8 +20,8 @@ extra-source-files:
     tests/inputFiles/withoutSandbox/exe/Source.hs
     tests/inputFiles/withoutSandbox/lib/Source.hs
     tests/inputFiles/withSandbox/test.cabal
+    tests/inputFiles/withSandbox/cabal.sandbox.config
     tests/inputFiles/withSandbox/dist/dist-sandbox-6d1acfa0/.gitignore
-    tests/inputFiles/withSandbox/.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d/.gitignore
     tests/inputFiles/withSandbox/exe/Source.hs
     tests/inputFiles/withSandbox/lib/Source.hs
     tests/goldenFiles/withoutSandbox/*.txt

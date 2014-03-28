@@ -25,7 +25,8 @@ import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
 import qualified Filesystem as FS
 import qualified Data.Text as T
-import Data.List (find, isSuffixOf, isPrefixOf)
+import Data.List (find, isPrefixOf)
+import qualified Data.List as L
 import Data.Maybe (isJust)
 
 
@@ -43,6 +44,8 @@ data Spec = Spec
 
 
 type Error = String
+
+io :: MonadIO m => IO a -> m a
 io = liftIO 
 
 
@@ -91,9 +94,9 @@ fromCmdArgs args
 --   the path to its package database is also returned.
 fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO Spec
 fromCabalFile file sections fields = do
-   pkgDB     <- io $ findPackageDB file
-   distDir   <- io $ findDistDir file
    pkgDescrp <- packageDescription file
+   pkgDB     <- findPackageDB file
+   distDir   <- io $ findDistDir file
    absFile   <- FP.encodeString <$> (io $ absoluteFile file)
    right $ Spec
       { sections      = sections
@@ -120,7 +123,7 @@ fromCabalFile file sections fields = do
 fromSourceFile :: FilePath -> F.Fields -> EitherT Error IO Spec
 fromSourceFile file fields = do
    cabalFile   <- findCabalFile file
-   pkgDB       <- io $ findPackageDB cabalFile
+   pkgDB       <- findPackageDB cabalFile
    distDir     <- io $ findDistDir cabalFile
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
@@ -261,19 +264,32 @@ findCabalFile file = do
 
 -- | Find the package database of the cabal sandbox from the given cabal file.
 --   The returned file path is relative to the directory of the cabal file.
-findPackageDB :: FilePath -> IO (Maybe FilePath)
+findPackageDB :: FilePath -> EitherT Error IO (Maybe FilePath)
 findPackageDB cabalFile = do
-   cabalDir <- absoluteDirectory cabalFile
-   let sandboxDir = cabalDir </> FP.decodeString ".cabal-sandbox"
-   hasDir <- FS.isDirectory sandboxDir
-   if hasDir
+   cabalDir <- io $ absoluteDirectory cabalFile
+   let sandboxConfig = cabalDir </> sandbox_config
+   isFile   <- io $ FS.isFile sandboxConfig
+   if isFile
       then do
-         files <- filterM FS.isDirectory =<< (FS.listDirectory sandboxDir)
-         return $ FP.encodeString . (stripPrefix cabalDir) <$> find isPackageDB files
-      else return Nothing
+         packageDB <- io $ readPackageDB sandboxConfig
+         case packageDB of
+              Just db -> right . Just $ stripPrefix cabalDir db
+              _       -> left $ "Couldn't find field 'package-db: ' in " ++ (show sandboxConfig)
+      else
+         right Nothing
 
    where
-      isPackageDB file = "packages.conf.d" `isSuffixOf` (FP.encodeString file)
+      -- | reads the 'package-db: ' field from the sandbox config file and returns the value of the field
+      readPackageDB :: FP.FilePath -> IO (Maybe FP.FilePath)
+      readPackageDB sandboxConfig = do
+         lines <- lines <$> Strict.readFile (FP.encodeString sandboxConfig)
+         return $ do
+            line      <- find (package_db `L.isPrefixOf`) lines
+            packageDB <- L.stripPrefix package_db line
+            return $ FP.decodeString packageDB
+
+      sandbox_config = FP.decodeString "cabal.sandbox.config"
+      package_db     = "package-db: "
 
 
 -- | Find the dist directory of the cabal build from the given cabal file. For a non sandboxed
@@ -288,7 +304,7 @@ findDistDir cabalFile = do
    if hasDistDir
       then do
          files <- filterM FS.isDirectory =<< (FS.listDirectory distDir)
-         return $ FP.encodeString . (stripPrefix cabalDir) <$> maybe (Just distDir) Just (find isSandboxDistDir files)
+         return $ (stripPrefix cabalDir) <$> maybe (Just distDir) Just (find isSandboxDistDir files)
       else return Nothing
 
    where
@@ -309,13 +325,13 @@ absoluteFile :: FilePath -> IO FP.FilePath
 absoluteFile = FS.canonicalizePath . FP.decodeString
 
 
-stripPrefix :: FP.FilePath -> FP.FilePath -> FP.FilePath
+stripPrefix :: FP.FilePath -> FP.FilePath -> FilePath
 stripPrefix prefix file
    | Just stripped <- FP.stripPrefix prefix file
-   = stripped
+   = FP.encodeString stripped
 
    | otherwise
-   = file
+   = FP.encodeString file
 
 
 combineSections :: S.Sections -> [S.Section] -> S.Sections
