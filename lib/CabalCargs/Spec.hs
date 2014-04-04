@@ -212,7 +212,7 @@ allHsSourceDirs :: GenericPackageDescription -> [(S.Section, HsSourceDirs)]
 allHsSourceDirs pkgDescrp = map fromBuildInfo buildInfos
    where
       fromBuildInfo (section, buildInfos) =
-         (section, toFPs $ concat $ (map PD.hsSourceDirs) (buildInfos condVars pkgDescrp))
+         (section, toFPs $ concat $ (map (PD.hsSourceDirs . B.buildInfo)) (buildInfos condVars pkgDescrp))
 
       buildInfos = concat [ [ (S.Library, B.buildInfosOfLib) | isJust $ PD.condLibrary pkgDescrp ]
                           , map fromExe (PD.condExecutables pkgDescrp)

@@ -1,7 +1,8 @@
 {-# LANGUAGE TemplateHaskell, Rank2Types, PatternGuards #-}
 
 module CabalCargs.BuildInfo
-   ( buildInfosOfLib
+   ( BuildInfo(..)
+   , buildInfosOfLib
    , buildInfosOfExe
    , buildInfosOfTest
    , buildInfosOfBenchmark
@@ -10,9 +11,11 @@ module CabalCargs.BuildInfo
    , field
    ) where
 
-import Distribution.PackageDescription
+import qualified Distribution.PackageDescription as PD
+import Distribution.PackageDescription (GenericPackageDescription(..), CondTree(..), ConfVar)
 import Distribution.Compiler
-import Distribution.Package (Dependency)
+import Distribution.Package (Dependency(..), PackageName(..))
+import Distribution.Version (anyVersion)
 import Language.Haskell.Extension
 import Control.Lens
 import Data.List (find)
@@ -21,18 +24,29 @@ import qualified CabalCargs.Field as F
 import qualified CabalCargs.CondVars as CV
 
 
-makeLensesFor [ ("hsSourceDirs"     , "hsSourceDirsL")
-              , ("options"          , "optionsL")
-              , ("defaultLanguage"  , "defaultLanguageL")
-              , ("cppOptions"       , "cppOptionsL")
-              , ("cSources"         , "cSourcesL")
-              , ("ccOptions"        , "ccOptionsL")
-              , ("extraLibDirs"     , "extraLibDirsL")
-              , ("extraLibs"        , "extraLibsL")
-              , ("ldOptions"        , "ldOptionsL")
-              , ("includeDirs"      , "includeDirsL")
-              , ("includes"         , "includesL")
+data BuildInfo = BuildInfo
+   { buildInfo    :: PD.BuildInfo
+   , buildDepends :: [Dependency]
+   } deriving (Show, Eq)
+
+
+makeLensesFor [ ("buildInfo"   , "buildInfoL")
+              , ("buildDepends", "buildDependsL")
               ] ''BuildInfo
+
+
+makeLensesFor [ ("hsSourceDirs"      , "hsSourceDirsL")
+              , ("options"           , "optionsL")
+              , ("defaultLanguage"   , "defaultLanguageL")
+              , ("cppOptions"        , "cppOptionsL")
+              , ("cSources"          , "cSourcesL")
+              , ("ccOptions"         , "ccOptionsL")
+              , ("extraLibDirs"      , "extraLibDirsL")
+              , ("extraLibs"         , "extraLibsL")
+              , ("ldOptions"         , "ldOptionsL")
+              , ("includeDirs"       , "includeDirsL")
+              , ("includes"          , "includesL")
+              ] ''PD.BuildInfo
 
 
 buildInfosOf :: S.Section -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
@@ -54,7 +68,7 @@ buildInfos vars pkgDescrp =
 buildInfosOfLib :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfLib vars pkgDescrp
    | Just condLib <- condLibrary pkgDescrp
-   = map libBuildInfo $ condTreeDatas vars condLib
+   = map (toBuildInfo PD.libBuildInfo) $ condTreeDatasAndConstraints vars condLib
 
    | otherwise
    = []
@@ -63,7 +77,7 @@ buildInfosOfLib vars pkgDescrp
 buildInfosOfExe :: String -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfExe name vars pkgDescrp
    | Just (_, condExe) <- find ((== name) . fst) $ condExecutables pkgDescrp
-   = map buildInfo $ condTreeDatas vars condExe
+   = map (toBuildInfo PD.buildInfo) $ condTreeDatasAndConstraints vars condExe
 
    | otherwise
    = []
@@ -71,13 +85,13 @@ buildInfosOfExe name vars pkgDescrp
 
 buildInfosOfAllExes :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfAllExes vars pkgDescrp =
-   concat $ map ((map buildInfo) . (condTreeDatas vars) . snd) (condExecutables pkgDescrp)
+   concat $ map ((map (toBuildInfo PD.buildInfo)) . (condTreeDatasAndConstraints vars) . snd) (condExecutables pkgDescrp)
 
 
 buildInfosOfTest :: String -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfTest name vars pkgDescrp
    | Just (_, condTest) <- find ((== name) . fst) $ condTestSuites pkgDescrp
-   = map testBuildInfo $ condTreeDatas vars condTest
+   = map (toBuildInfo PD.testBuildInfo) $ condTreeDatasAndConstraints vars condTest
 
    | otherwise
    = []
@@ -85,13 +99,13 @@ buildInfosOfTest name vars pkgDescrp
 
 buildInfosOfAllTests :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfAllTests vars pkgDescrp =
-   concat $ map ((map testBuildInfo) . (condTreeDatas vars) . snd) (condTestSuites pkgDescrp)
+   concat $ map ((map (toBuildInfo PD.testBuildInfo)) . (condTreeDatasAndConstraints vars) . snd) (condTestSuites pkgDescrp)
 
 
 buildInfosOfBenchmark :: String -> CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfBenchmark name vars pkgDescrp
    | Just (_, condBench) <- find ((== name) . fst) $ condBenchmarks pkgDescrp
-   = map benchmarkBuildInfo $ condTreeDatas vars condBench
+   = map (toBuildInfo PD.benchmarkBuildInfo) $ condTreeDatasAndConstraints vars condBench
 
    | otherwise
    = []
@@ -99,40 +113,49 @@ buildInfosOfBenchmark name vars pkgDescrp
 
 buildInfosOfAllBenchmarks :: CV.CondVars -> GenericPackageDescription -> [BuildInfo]
 buildInfosOfAllBenchmarks vars pkgDescrp =
-   concat $ map ((map benchmarkBuildInfo) . (condTreeDatas vars) . snd) (condBenchmarks pkgDescrp)
+   concat $ map ((map (toBuildInfo PD.benchmarkBuildInfo)) . (condTreeDatasAndConstraints vars) . snd) (condBenchmarks pkgDescrp)
 
 
--- | Returns all 'condTreeData' of the 'CondTree' which conditions match the given 'CondVars'. 
-condTreeDatas :: CV.CondVars -> CondTree ConfVar [Dependency] a -> [a]
-condTreeDatas vars tree = go (condTreeComponents tree) [condTreeData tree]
+toBuildInfo :: (dat -> PD.BuildInfo) -> (dat, [Dependency]) -> BuildInfo
+toBuildInfo f (dat, deps) = BuildInfo { buildInfo    = f dat
+                                      , buildDepends = deps
+                                      }
+
+
+-- | Returns all 'condTreeData' and 'condTreeConstraints' of the 'CondTree' which conditions match the given 'CondVars'.
+condTreeDatasAndConstraints :: CV.CondVars -> CondTree ConfVar [Dependency] dat -> [(dat, [Dependency])]
+condTreeDatasAndConstraints vars tree = go (condTreeComponents tree) [dataAndConstraints tree]
    where
       go [] dats = dats
 
       go ((cond, ifTree, elseTree) : comps) dats
          | CV.eval vars cond
-         = go comps $ go (condTreeComponents ifTree) (condTreeData ifTree : dats)
+         = go comps $ go (condTreeComponents ifTree) (dataAndConstraints ifTree : dats)
 
          | Just tree <- elseTree
-         = go comps $ go (condTreeComponents tree) (condTreeData tree : dats)
+         = go comps $ go (condTreeComponents tree) (dataAndConstraints tree : dats)
 
          | otherwise
          = go comps dats
 
+      dataAndConstraints tree = (condTreeData tree, condTreeConstraints tree)
+
 
 -- | A lens from a 'BuildInfo' to a list of stringified field entries of the 'BuildInfo'.
 field :: F.Field -> Traversal' BuildInfo [String]
-field F.Hs_Source_Dirs         = hsSourceDirsL
-field F.Ghc_Options            = optionsL . traversed . filtered ((== GHC) . fst) . _2
-field F.Default_Extensions     = oldAndDefaultExtensionsL . extsToStrings
-field F.Default_Language       = defaultLanguageL . langToString
-field F.Cpp_Options            = cppOptionsL
-field F.C_Sources              = cSourcesL
-field F.Cc_Options             = ccOptionsL
-field F.Extra_Lib_Dirs         = extraLibDirsL
-field F.Extra_Libraries        = extraLibsL
-field F.Ld_Options             = ldOptionsL
-field F.Include_Dirs           = includeDirsL
-field F.Includes               = includesL
+field F.Hs_Source_Dirs         = buildInfoL . hsSourceDirsL
+field F.Ghc_Options            = buildInfoL . optionsL . traversed . filtered ((== GHC) . fst) . _2
+field F.Default_Extensions     = buildInfoL . oldAndDefaultExtensionsL . extsToStrings
+field F.Default_Language       = buildInfoL . defaultLanguageL . langToString
+field F.Cpp_Options            = buildInfoL . cppOptionsL
+field F.C_Sources              = buildInfoL . cSourcesL
+field F.Cc_Options             = buildInfoL . ccOptionsL
+field F.Extra_Lib_Dirs         = buildInfoL . extraLibDirsL
+field F.Extra_Libraries        = buildInfoL . extraLibsL
+field F.Ld_Options             = buildInfoL . ldOptionsL
+field F.Include_Dirs           = buildInfoL . includeDirsL
+field F.Includes               = buildInfoL . includesL
+field F.Build_Depends          = buildDependsL . depsToStrings
 field F.Package_Db             = nopLens
 field F.Autogen_Hs_Source_Dirs = nopLens
 field F.Autogen_Include_Dirs   = nopLens
@@ -143,14 +166,14 @@ field F.Hdevtools_Socket       = nopLens
 -- | A lens that merges the fields 'default-extensions' and 'extensions',
 --   which now mean the same thing in cabal, 'extensions' is only the old
 --   name of 'default-extensions'.
-oldAndDefaultExtensionsL :: Lens' BuildInfo [Extension]
+oldAndDefaultExtensionsL :: Lens' PD.BuildInfo [Extension]
 oldAndDefaultExtensionsL = lens getter setter
    where
-      getter buildInfo      = (oldExtensions buildInfo) ++ (defaultExtensions buildInfo)
-      setter buildInfo exts = buildInfo { defaultExtensions = exts }
+      getter buildInfo      = (PD.oldExtensions buildInfo) ++ (PD.defaultExtensions buildInfo)
+      setter buildInfo exts = buildInfo { PD.defaultExtensions = exts }
 
 
--- | A lens (iso) that converts between a list of extensions
+-- | An iso that converts between a list of extensions
 --   and a list of strings containing the names of the extensions.
 extsToStrings :: Iso' [Extension] [String]
 extsToStrings = iso (map toString) (map toExt)
@@ -173,7 +196,7 @@ extsToStrings = iso (map toString) (map toExt)
          = UnknownExtension str
 
 
--- | A lens (iso) that converts between the language and
+-- | An iso that converts between the language and
 --   a list containing a string with the name of the language.
 langToString :: Iso' (Maybe Language) [String]
 langToString = iso toString toLang
@@ -192,6 +215,14 @@ langToString = iso toString toLang
          = Just $ UnknownLanguage str
 
       toLang _ = Nothing
+
+
+-- | An iso that converts a list of dependencies to a list of package names
+depsToStrings :: Iso' [Dependency] [String]
+depsToStrings = iso (map toString) (map toDep)
+   where
+      toString (Dependency (PackageName name) _) = name
+      toDep name = Dependency (PackageName name) anyVersion
 
 
 -- | A lens that does nothing, always returns an empty

@@ -105,6 +105,7 @@ Currently supported cabal fields are:
 * `ld_options`
 * `include_dirs`
 * `includes`
+* `build_depends`
 
 There are further some special fields:
 * `package_db`
@@ -115,7 +116,7 @@ There are further some special fields:
 
 It's not quite true, that all fields are printed out if not constrained, that's
 only the case for the `pure` formatting option. For the other formatting options
-currently the fields `c_sources`, `extra_libraries` and `ld_options` are ignored
+currently the fields `c_sources` and `ld_options` are ignored
 and additionally the `ghc` formatting option ignores the `hdevtools_socket` field.
 
 Flags

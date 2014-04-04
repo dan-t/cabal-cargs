@@ -36,6 +36,7 @@ data CompilerArgs = CompilerArgs
    , ldOptions           :: [String]
    , includeDirs         :: [FilePath]
    , includes            :: [String]
+   , buildDepends        :: [String]
    , packageDB           :: Maybe FilePath -- ^ the path to the package database of the cabal sandbox
    , autogenHsSourceDirs :: [FilePath]     -- ^ dirs of automatically generated haskell source files by cabal (e.g. Paths_*)
    , autogenIncludeDirs  :: [FilePath]     -- ^ dirs of automatically generated include files by cabal
@@ -57,6 +58,7 @@ makeLensesFor [ ("hsSourceDirs"       , "hsSourceDirsL")
               , ("ldOptions"          , "ldOptionsL")
               , ("includeDirs"        , "includeDirsL")
               , ("includes"           , "includesL")
+              , ("buildDepends"       , "buildDependsL")
               , ("packageDB"          , "packageDBL")
               , ("autogenHsSourceDirs", "autogenHsSourceDirsL")
               , ("autogenIncludeDirs" , "autogenIncludeDirsL")
@@ -159,6 +161,7 @@ fieldL F.Extra_Libraries        = extraLibrariesL
 fieldL F.Ld_Options             = ldOptionsL
 fieldL F.Include_Dirs           = includeDirsL
 fieldL F.Includes               = includesL
+fieldL F.Build_Depends          = buildDependsL
 fieldL F.Package_Db             = error $ "Unexpected field Package_Db for CabalCargs.CompilerArgs.fieldL!"
 fieldL F.Autogen_Hs_Source_Dirs = autogenHsSourceDirsL
 fieldL F.Autogen_Include_Dirs   = autogenIncludeDirsL
@@ -180,6 +183,7 @@ defaultCompilerArgs = CompilerArgs
    , ldOptions           = []
    , includeDirs         = []
    , includes            = []
+   , buildDepends        = []
    , packageDB           = Nothing
    , autogenHsSourceDirs = []
    , autogenIncludeDirs  = []

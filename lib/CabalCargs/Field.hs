@@ -25,6 +25,8 @@ data Field = Hs_Source_Dirs
            | Include_Dirs
            | Includes
 
+           | Build_Depends
+
            | Package_Db             -- ^ the package database of a cabal sandbox
            | Autogen_Hs_Source_Dirs -- ^ dirs of automatically generated haskell source files by cabal (e.g. Paths_*)
            | Autogen_Include_Dirs   -- ^ dirs of automatically generated include files by cabal

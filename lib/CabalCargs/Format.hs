@@ -21,12 +21,16 @@ format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
                           , map ("-l" ++) (extraLibraries cargs)
                           , formatIncludeDirs $ includeDirs cargs
                           , formatIncludes $ includes cargs
+                          , formatBuildDepends $ buildDepends cargs
                           , maybe [] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
                           , formatHsSourceDirs $ autogenHsSourceDirs cargs
                           , formatIncludeDirs $ autogenIncludeDirs cargs
                           , formatIncludes $ autogenIncludes cargs
                           ]
    where
+      formatBuildDepends []   = []
+      formatBuildDepends deps = "-hide-all-packages" : map ("-package=" ++) deps
+
       formatHsSourceDirs = map ("-i" ++)
       formatIncludeDirs  = map ("-I" ++)
 
@@ -52,6 +56,7 @@ format Pure cargs = concat [ hsSourceDirs cargs
                            , ldOptions cargs
                            , includeDirs cargs
                            , includes cargs
+                           , buildDepends cargs
                            , maybeToList $ packageDB cargs
                            , autogenHsSourceDirs cargs
                            , autogenIncludeDirs cargs
