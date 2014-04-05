@@ -70,6 +70,9 @@ Instead of searching for the cabal file by a source file the cabal file can be g
 
 If an additional source file is given, then the cabal file is searched for a fitting section.
 
+If no cabal file nor a source file is given, then starting at the current directory a
+cabal file is searched upwards the directory tree.
+
 Sections
 ========
 
@@ -79,6 +82,7 @@ certain section, then you could do this by using the options:
 * `--executable=name`
 * `--testsuite=name`
 * `--benchmark=name`
+* `--allsections`
 
 You can use multiple of these options at once and even specify multiple
 e.g. executables at once: `--executable=exe1 --executable=exe2 ...`.
@@ -87,7 +91,8 @@ Fields
 ======
 
 By default all fields of a section are printed out. You can constrain the
-output by the option: `--only=name`. This option can be specified multiple times.
+output by the options: `--only=name` or `--ignore=name`. These options can
+be specified multiple times.
 
 The allowed names are the field names from the cabal file, just the hyphen
 replaced by an underscore e.g.: `hs-source-dirs` -> `hs_source_dirs`.
