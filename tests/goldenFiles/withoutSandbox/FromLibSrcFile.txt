@@ -1,1 +1,1 @@
--ilib -W -optP-DLIB -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h
+-ilib -W -optP-DLIB -package=base -package=cmdargs -package=lens -package=directory -package=strict -package=transformers -package=either -package=text -package=system-filepath -package=system-fileio -package=Cabal -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h

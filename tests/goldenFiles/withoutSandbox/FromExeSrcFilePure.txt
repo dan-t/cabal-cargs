@@ -1,1 +1,1 @@
-exe -W -DEXE dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock
+exe -W -DEXE base cabal-cargs dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock

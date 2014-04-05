@@ -1,1 +1,1 @@
--itests -W -package-conf=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d -idist/dist-sandbox-6d1acfa0/build/autogen -Idist/dist-sandbox-6d1acfa0/build/autogen -optP-include -optPcabal_macros.h
+-itests -W -package=base -package=tasty -package=tasty-golden -package=filepath -package=cabal-cargs -package-conf=.cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d -idist/dist-sandbox-6d1acfa0/build/autogen -Idist/dist-sandbox-6d1acfa0/build/autogen -optP-include -optPcabal_macros.h

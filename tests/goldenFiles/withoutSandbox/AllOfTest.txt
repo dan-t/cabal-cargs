@@ -1,1 +1,1 @@
--itests -W -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h
+-itests -W -package=base -package=tasty -package=tasty-golden -package=filepath -package=cabal-cargs -idist/build/autogen -Idist/build/autogen -optP-include -optPcabal_macros.h
