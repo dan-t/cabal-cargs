@@ -7,7 +7,7 @@ import System.IO (hPutStrLn, stderr)
 import System.FilePath ((</>), (<.>))
 import CabalCargs.Args
 import CabalCargs.Formatting
-import qualified CabalCargs.Field as F
+import qualified CabalCargs.Fields as F
 import qualified CabalCargs.Format as Fmt
 import qualified CabalCargs.CompilerArgs as CompilerArgs
 import Data.List (intercalate)
@@ -87,17 +87,19 @@ test dir testName args =
 
 defaultArgs :: Args
 defaultArgs = Args
-   { library    = False
-   , executable = []
-   , testSuite  = []
-   , benchmark  = []
-   , only       = []
-   , format     = Ghc
-   , sourceFile = Nothing
-   , cabalFile  = Nothing
-   , enable     = []
-   , disable    = []
-   , os         = Nothing
-   , arch       = Nothing
-   , relative   = True
+   { library     = False
+   , executable  = []
+   , testSuite   = []
+   , benchmark   = []
+   , allSections = False
+   , only        = []
+   , ignore      = []
+   , format      = Ghc
+   , sourceFile  = Nothing
+   , cabalFile   = Nothing
+   , enable      = []
+   , disable     = []
+   , os          = Nothing
+   , arch        = Nothing
+   , relative    = True
    }

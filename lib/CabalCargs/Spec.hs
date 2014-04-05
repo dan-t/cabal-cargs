@@ -25,7 +25,7 @@ import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
 import qualified Filesystem as FS
 import qualified Data.Text as T
-import Data.List (find, isPrefixOf)
+import Data.List (find, isPrefixOf, (\\))
 import qualified Data.List as L
 import Data.Maybe (isJust)
 
@@ -58,49 +58,53 @@ io = liftIO
 fromCmdArgs :: Args -> IO (Either Error Spec)
 fromCmdArgs args
    | Just cabalFile <- A.cabalFile args = runEitherT $ do
-      spec        <- fromCabalFile cabalFile (S.sections args) (F.fields args)
+      spec        <- fromCabalFile cabalFile
       srcSections <- io $ case A.sourceFile args of
                                Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
                                _            -> return []
 
-      right $ applyCondVars $ spec { sections      = combineSections (sections spec) srcSections
+      right $ applyCondVars $ spec { sections      = combineSections args srcSections
                                    , relativePaths = A.relative args
                                    }
 
    | Just sourceFile <- A.sourceFile args = runEitherT $ do
-      spec <- fromSourceFile sourceFile (F.fields args)
-      let specSections = case sections spec of
-                              S.Sections ss -> ss
-                              _             -> []
+      spec <- fromSourceFile sourceFile
+      let srcSections = case sections spec of
+                             S.Sections ss -> ss
+                             _             -> []
 
-      right $ applyCondVars $ spec { sections      = combineSections (S.sections args) specSections
+      right $ applyCondVars $ spec { sections      = combineSections args srcSections
+                                   , fields        = fields_ args
                                    , relativePaths = A.relative args
                                    }
 
    | otherwise = runEitherT $ do
       curDir    <- io $ getCurrentDirectory
       cabalFile <- findCabalFile curDir
-      spec      <- fromCabalFile cabalFile (S.sections args) (F.fields args)
-      right $ applyCondVars $ spec { relativePaths = A.relative args }
+      spec      <- fromCabalFile cabalFile
+      right $ applyCondVars $ spec { sections      = sections_ args
+                                   , fields        = fields_ args
+                                   , relativePaths = A.relative args
+                                   }
 
    where
       applyCondVars = applyFlags args . applyOS args . applyArch args
 
 
 
--- | Create a 'Spec' from the given cabal file, sections and fields.
+-- | Create a 'Spec' from the given cabal file.
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
-fromCabalFile :: FilePath -> S.Sections -> F.Fields -> EitherT Error IO Spec
-fromCabalFile file sections fields = do
+fromCabalFile :: FilePath -> EitherT Error IO Spec
+fromCabalFile file = do
    pkgDescrp <- packageDescription file
    pkgDB     <- findPackageDB file
    distDir   <- io $ findDistDir file
    absFile   <- FP.encodeString <$> (io $ absoluteFile file)
    right $ Spec
-      { sections      = sections
-      , fields        = fields
+      { sections      = S.AllSections
+      , fields        = F.allFields
       , condVars      = CV.fromDefaults pkgDescrp
       , cabalPackage  = pkgDescrp
       , cabalFile     = absFile
@@ -110,7 +114,7 @@ fromCabalFile file sections fields = do
       }
 
 
--- | Create a 'Spec' from the given source file and fields.
+-- | Create a 'Spec' from the given source file.
 --
 --   Starting at the directory of the source file a cabal file is searched
 --   upwards the directory tree.
@@ -120,16 +124,16 @@ fromCabalFile file sections fields = do
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
-fromSourceFile :: FilePath -> F.Fields -> EitherT Error IO Spec
-fromSourceFile file fields = do
+fromSourceFile :: FilePath -> EitherT Error IO Spec
+fromSourceFile file = do
    cabalFile   <- findCabalFile file
    pkgDB       <- findPackageDB cabalFile
    distDir     <- io $ findDistDir cabalFile
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
    right $ Spec
-      { sections = combineSections S.AllSections srcSections
-      , fields        = fields
+      { sections      = S.Sections srcSections
+      , fields        = F.allFields
       , condVars      = CV.fromDefaults pkgDescrp
       , cabalPackage  = pkgDescrp
       , cabalFile     = cabalFile
@@ -334,7 +338,49 @@ stripPrefix prefix file
    = FP.encodeString file
 
 
-combineSections :: S.Sections -> [S.Section] -> S.Sections
-combineSections S.AllSections     [] = S.AllSections
-combineSections S.AllSections     ss = S.Sections ss
-combineSections (S.Sections ss)    _ = S.Sections ss
+combineSections :: Args -> [S.Section] -> S.Sections
+combineSections args sections
+   | A.allSections args
+   = S.AllSections
+
+   | [] <- explicitSections args
+   , null sections
+   = S.AllSections
+
+   | otherwise
+   = S.Sections $ explicitSections args ++ sections
+
+
+-- | Convert the command line arguments into 'Fields'.
+fields_ :: Args -> F.Fields
+fields_ args
+   | fs@(_:_) <- A.only args
+   = fs
+
+   | fs@(_:_) <- A.ignore args
+   = F.allFields \\ fs
+
+   | otherwise
+   = F.allFields
+
+
+-- | Convert the command line arguments into 'Sections'.
+sections_ :: Args -> S.Sections
+sections_ args
+   | A.allSections args
+   = S.AllSections
+
+   | ss@(_:_) <- explicitSections args
+   = S.Sections ss
+
+   | otherwise
+   = S.AllSections
+
+
+explicitSections :: Args -> [S.Section]
+explicitSections args =
+   concat [ [S.Library | A.library args]
+          , map S.Executable (A.executable args)
+          , map S.TestSuite (A.testSuite args)
+          , map S.Benchmark (A.benchmark args)
+          ]

@@ -29,7 +29,7 @@ format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
                           ]
    where
       formatBuildDepends []   = []
-      formatBuildDepends deps = "-hide-all-packages" : map ("-package=" ++) deps
+      formatBuildDepends deps = map ("-package=" ++) deps
 
       formatHsSourceDirs = map ("-i" ++)
       formatIncludeDirs  = map ("-I" ++)

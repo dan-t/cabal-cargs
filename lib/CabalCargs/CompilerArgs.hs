@@ -10,8 +10,7 @@ import CabalCargs.Spec (Spec)
 import qualified CabalCargs.Spec as Spec
 import qualified CabalCargs.Args as A
 import qualified CabalCargs.Sections as S
-import qualified CabalCargs.Field as F
-import qualified CabalCargs.Fields as Fs
+import qualified CabalCargs.Fields as F
 import qualified CabalCargs.BuildInfo as B
 import Data.List (nub, foldl')
 import Control.Applicative ((<$>))
@@ -106,7 +105,7 @@ fromSpec spec =
          collectFields (buildInfosOf section) cargs
 
       collectFields buildInfos cargs =
-        foldl' (addCarg buildInfos) cargs fields
+        foldl' (addCarg buildInfos) cargs (Spec.fields spec)
         where
            addCarg _ cargs F.Package_Db  =
               cargs & packageDBL .~ Spec.packageDB spec
@@ -139,10 +138,6 @@ fromSpec spec =
               cargs & (fieldL field) %~ nub . (++ buildInfoFields)
               where
                  buildInfoFields = concat $ map (^. B.field field) buildInfos
-
-           fields = case Spec.fields spec of
-                         Fs.Fields fs -> fs
-                         _            -> F.allFields
 
       buildInfos           = B.buildInfos (Spec.condVars spec) (Spec.cabalPackage spec)
       buildInfosOf section = B.buildInfosOf section (Spec.condVars spec) (Spec.cabalPackage spec)

@@ -20,7 +20,7 @@ import Language.Haskell.Extension
 import Control.Lens
 import Data.List (find)
 import qualified CabalCargs.Sections as S
-import qualified CabalCargs.Field as F
+import qualified CabalCargs.Fields as F
 import qualified CabalCargs.CondVars as CV
 
 
