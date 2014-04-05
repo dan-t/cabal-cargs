@@ -5,7 +5,7 @@ for dir in $dirs ; do
    cabal-cargs --relative --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/FromCabalFile.txt
    cabal-cargs --relative --sourcefile=inputFiles/$dir/lib/Source.hs > goldenFiles/$dir/FromLibSrcFile.txt
    cabal-cargs --relative --sourcefile=inputFiles/$dir/exe/Source.hs > goldenFiles/$dir/FromExeSrcFile.txt
-   .txt
+
    cabal-cargs --relative --format=hdevtools --sourcefile=inputFiles/$dir/lib > goldenFiles/$dir/FindCabalFileHdevtools.txt
    cabal-cargs --relative --format=hdevtools --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/FromCabalFileHdevtools.txt
    cabal-cargs --relative --format=hdevtools --sourcefile=inputFiles/$dir/lib/Source.hs > goldenFiles/$dir/FromLibSrcFileHdevtools.txt
@@ -31,4 +31,7 @@ for dir in $dirs ; do
    cabal-cargs --relative --enable=default_false_flag --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/EnableFlag.txt
    cabal-cargs --relative --disable=default_true_flag --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/DisableFlag.txt
    cabal-cargs --relative --enable=default_false_flag --disable=default_true_flag --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/EnableAndDisableFlag.txt
+
+   cabal-cargs --relative --ignore=build_depends --cabalfile=inputFiles/$dir/test.cabal > goldenFiles/$dir/IgnoreBuildDepends.txt
+   cabal-cargs --relative --allsections --sourcefile=inputFiles/$dir/exe/Source.hs > goldenFiles/$dir/AllSections.txt
 done

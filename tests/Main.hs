@@ -56,6 +56,9 @@ testsWithBaseDir dir = T.testGroup dir
    , test dir "EnableFlag" $ defaultArgs { cabalFile = cabalFile, enable = ["default_false_flag"] }
    , test dir "DisableFlag" $ defaultArgs { cabalFile = cabalFile, disable = ["default_true_flag"] }
    , test dir "EnableAndDisableFlag" $ defaultArgs { cabalFile = cabalFile, enable = ["default_false_flag"], disable = ["default_true_flag"] }
+
+   , test dir "IgnoreBuildDepends" $ defaultArgs { cabalFile = cabalFile, ignore = [F.Build_Depends] }
+   , test dir "AllSections" $ defaultArgs { sourceFile = libSrcFile, allSections = True }
    ]
 
    where
