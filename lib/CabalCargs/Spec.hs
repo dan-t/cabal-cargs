@@ -64,6 +64,7 @@ fromCmdArgs args
                                _            -> return []
 
       right $ applyCondVars $ spec { sections      = combineSections args srcSections
+                                   , fields        = fields_ args
                                    , relativePaths = A.relative args
                                    }
 
