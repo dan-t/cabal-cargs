@@ -37,7 +37,8 @@ library
         cpp-options: -DLIB
     hs-source-dirs: lib
     other-modules: Paths_cabal_cargs
-    ghc-options: -W
+    if !impl(XXX > 20)
+        ghc-options: -W
  
 executable cabal-cargs
     build-depends: base >=3 && <5, cabal-cargs -any
