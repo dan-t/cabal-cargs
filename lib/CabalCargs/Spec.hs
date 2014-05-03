@@ -6,20 +6,18 @@ module CabalCargs.Spec
    ) where
 
 import Distribution.PackageDescription (GenericPackageDescription)
-import qualified Distribution.PackageDescription as PD
 import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
 import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)
-import qualified CabalCargs.BuildInfo as B
 import qualified CabalCargs.Args as A
-import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Fields as F
-import qualified CabalCargs.CondVars as CV
+import qualified CabalLenses as CL
 import qualified System.IO.Strict as Strict
 import Control.Monad.Trans.Either (EitherT, left, right, runEitherT)
 import Control.Monad.IO.Class
 import Control.Monad (filterM)
 import Control.Applicative ((<$>))
+import Control.Lens
 import System.Directory (getCurrentDirectory)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
@@ -32,10 +30,10 @@ import Data.Maybe (isJust)
 
 -- | Specifies which compiler args from which sections should be collected.
 data Spec = Spec 
-   { sections      :: S.Sections                -- ^ the sections used for collecting the compiler args
+   { sections      :: [CL.Section]              -- ^ the sections used for collecting the compiler args
    , fields        :: F.Fields                  -- ^ for these fields compiler args are collected
-   , condVars      :: CV.CondVars               -- ^ used for the evaluation of the conditional fields in the cabal file
-   , cabalPackage  :: GenericPackageDescription -- ^ the package description of the read in cabal file
+   , condVars      :: CL.CondVars               -- ^ used for the evaluation of the conditional fields in the cabal file
+   , pkgDescrp     :: GenericPackageDescription -- ^ the package description of the read in cabal file
    , cabalFile     :: FilePath                  -- ^ the cabal file read from
    , distDir       :: Maybe FilePath            -- ^ the dist directory of the cabal build, a relative path to the directory of the cabal file
    , packageDB     :: Maybe FilePath            -- ^ the directory of package database of the cabal sandbox, a relative path to the directory of the cabal file
@@ -60,30 +58,26 @@ fromCmdArgs args
    | Just cabalFile <- A.cabalFile args = runEitherT $ do
       spec        <- fromCabalFile cabalFile
       srcSections <- io $ case A.sourceFile args of
-                               Just srcFile -> findSections srcFile cabalFile (cabalPackage spec)
+                               Just srcFile -> findSections srcFile cabalFile (pkgDescrp spec)
                                _            -> return []
 
-      right $ applyCondVars $ spec { sections      = combineSections args srcSections
+      right $ applyCondVars $ spec { sections      = combineSections (args, pkgDescrp spec) srcSections
                                    , fields        = fields_ args
                                    , relativePaths = A.relative args
                                    }
 
    | Just sourceFile <- A.sourceFile args = runEitherT $ do
       spec <- fromSourceFile sourceFile
-      let srcSections = case sections spec of
-                             S.Sections ss -> ss
-                             _             -> []
-
-      right $ applyCondVars $ spec { sections      = combineSections args srcSections
+      right $ applyCondVars $ spec { sections      = combineSections (args, pkgDescrp spec) (sections spec)
                                    , fields        = fields_ args
                                    , relativePaths = A.relative args
                                    }
 
    | otherwise = runEitherT $ do
-      curDir    <- io $ getCurrentDirectory
+      curDir    <- io getCurrentDirectory
       cabalFile <- findCabalFile curDir
       spec      <- fromCabalFile cabalFile
-      right $ applyCondVars $ spec { sections      = sections_ args
+      right $ applyCondVars $ spec { sections      = sections_ args (pkgDescrp spec)
                                    , fields        = fields_ args
                                    , relativePaths = A.relative args
                                    }
@@ -102,12 +96,12 @@ fromCabalFile file = do
    pkgDescrp <- packageDescription file
    pkgDB     <- findPackageDB file
    distDir   <- io $ findDistDir file
-   absFile   <- FP.encodeString <$> (io $ absoluteFile file)
+   absFile   <- FP.encodeString <$> io (absoluteFile file)
    right $ Spec
-      { sections      = S.AllSections
+      { sections      = CL.allSections pkgDescrp
       , fields        = F.allFields
-      , condVars      = CV.fromDefaults pkgDescrp
-      , cabalPackage  = pkgDescrp
+      , condVars      = CL.fromDefaults pkgDescrp
+      , pkgDescrp     = pkgDescrp
       , cabalFile     = absFile
       , distDir       = distDir
       , packageDB     = pkgDB
@@ -133,10 +127,10 @@ fromSourceFile file = do
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
    right $ Spec
-      { sections      = S.Sections srcSections
+      { sections      = srcSections
       , fields        = F.allFields
-      , condVars      = CV.fromDefaults pkgDescrp
-      , cabalPackage  = pkgDescrp
+      , condVars      = CL.fromDefaults pkgDescrp
+      , pkgDescrp     = pkgDescrp
       , cabalFile     = cabalFile
       , distDir       = distDir
       , packageDB     = pkgDB
@@ -148,8 +142,8 @@ applyFlags :: Args -> Spec -> Spec
 applyFlags args spec =
    spec { condVars = disableFlags . enableFlags $ condVars spec }
    where
-      disableFlags condVars = foldr CV.disableFlag condVars (A.disable args)
-      enableFlags  condVars = foldr CV.enableFlag condVars (A.enable args)
+      disableFlags condVars = foldr CL.disableFlag condVars (A.disable args)
+      enableFlags  condVars = foldr CL.enableFlag condVars (A.enable args)
 
 
 applyOS :: Args -> Spec -> Spec
@@ -165,7 +159,7 @@ applyOS (A.Args { A.os = os }) spec
    = spec
 
    where
-      setOS name = spec { condVars = (condVars spec) { CV.os = name } }
+      setOS name = spec { condVars = (condVars spec) { CL.os = name } }
 
 
 applyArch :: Args -> Spec -> Spec
@@ -181,7 +175,7 @@ applyArch (A.Args { A.arch = arch }) spec
    = spec
 
    where
-      setArch name = spec { condVars = (condVars spec) { CV.arch = name } }
+      setArch name = spec { condVars = (condVars spec) { CL.arch = name } }
 
 
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
@@ -196,7 +190,7 @@ packageDescription file = do
 --   This is done by checking if the source file is contained in the directory
 --   or a sub directory of the directories listed in the 'hs-source-dirs' field
 --   of the section.
-findSections :: FilePath -> FilePath -> GenericPackageDescription -> IO [S.Section]
+findSections :: FilePath -> FilePath -> GenericPackageDescription -> IO [CL.Section]
 findSections srcFile cabalFile pkgDescrp = do
    absSrcFile <- absoluteFile srcFile
    cabalDir   <- absoluteDirectory cabalFile
@@ -213,25 +207,15 @@ findSections srcFile cabalFile pkgDescrp = do
 
 type HsSourceDirs = [FP.FilePath]
 -- | Returns the hs-source-dirs of all sections present in the given package description.
-allHsSourceDirs :: GenericPackageDescription -> [(S.Section, HsSourceDirs)]
-allHsSourceDirs pkgDescrp = map fromBuildInfo buildInfos
+allHsSourceDirs :: GenericPackageDescription -> [(CL.Section, HsSourceDirs)]
+allHsSourceDirs pkgDescrp = zip sections hsSourceDirs
    where
-      fromBuildInfo (section, buildInfos) =
-         (section, toFPs $ concat $ (map (PD.hsSourceDirs . B.buildInfo)) (buildInfos condVars pkgDescrp))
+      sections     = CL.allSections pkgDescrp
+      hsSourceDirs = map (\section -> toFPs $ pkgDescrp ^. CL.buildInfoIf condVars section . CL.hsSourceDirsL) sections
+         where
+            toFPs    = map FP.decodeString
+            condVars = CL.fromDefaults pkgDescrp
 
-      buildInfos = concat [ [ (S.Library, B.buildInfosOfLib) | isJust $ PD.condLibrary pkgDescrp ]
-                          , map fromExe (PD.condExecutables pkgDescrp)
-                          , map fromTest (PD.condTestSuites pkgDescrp)
-                          , map fromBenchm (PD.condBenchmarks pkgDescrp)
-                          ]
-
-      fromExe (name, _)    = (S.Executable name, B.buildInfosOfExe name)
-      fromTest (name, _)   = (S.TestSuite name, B.buildInfosOfTest name)
-      fromBenchm (name, _) = (S.Benchmark name, B.buildInfosOfBenchmark name)
-
-      toFPs = map FP.decodeString
-
-      condVars = CV.fromDefaults pkgDescrp
 
 
 -- | Find a cabal file starting at the given directory, going upwards the directory
@@ -339,17 +323,17 @@ stripPrefix prefix file
    = FP.encodeString file
 
 
-combineSections :: Args -> [S.Section] -> S.Sections
-combineSections args sections
+combineSections :: (Args, GenericPackageDescription) -> [CL.Section] -> [CL.Section]
+combineSections (args, pkgDescrp) sections
    | A.allSections args
-   = S.AllSections
+   = CL.allSections pkgDescrp
 
    | [] <- explicitSections args
    , null sections
-   = S.AllSections
+   = CL.allSections pkgDescrp
 
    | otherwise
-   = S.Sections $ explicitSections args ++ sections
+   = L.nub $ explicitSections args ++ sections
 
 
 -- | Convert the command line arguments into 'Fields'.
@@ -366,22 +350,22 @@ fields_ args
 
 
 -- | Convert the command line arguments into 'Sections'.
-sections_ :: Args -> S.Sections
-sections_ args
+sections_ :: Args -> GenericPackageDescription -> [CL.Section]
+sections_ args pkgDescrp
    | A.allSections args
-   = S.AllSections
+   = CL.allSections pkgDescrp
 
    | ss@(_:_) <- explicitSections args
-   = S.Sections ss
+   = ss
 
    | otherwise
-   = S.AllSections
+   = CL.allSections pkgDescrp
 
 
-explicitSections :: Args -> [S.Section]
+explicitSections :: Args -> [CL.Section]
 explicitSections args =
-   concat [ [S.Library | A.library args]
-          , map S.Executable (A.executable args)
-          , map S.TestSuite (A.testSuite args)
-          , map S.Benchmark (A.benchmark args)
+   concat [ [CL.Library | A.library args]
+          , map CL.Executable (A.executable args)
+          , map CL.TestSuite (A.testSuite args)
+          , map CL.Benchmark (A.benchmark args)
           ]

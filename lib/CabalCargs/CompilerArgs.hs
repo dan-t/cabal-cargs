@@ -9,10 +9,11 @@ module CabalCargs.CompilerArgs
 import CabalCargs.Spec (Spec)
 import qualified CabalCargs.Spec as Spec
 import qualified CabalCargs.Args as A
-import qualified CabalCargs.Sections as S
 import qualified CabalCargs.Fields as F
 import qualified CabalCargs.BuildInfo as B
+import qualified CabalLenses as CL
 import Data.List (nub, foldl')
+import Data.Maybe (maybeToList, listToMaybe)
 import Control.Applicative ((<$>))
 import Control.Lens
 import qualified Filesystem.Path.CurrentOS as FP
@@ -75,14 +76,7 @@ fromCmdArgs args = (fromSpec <$>) <$> Spec.fromCmdArgs args
 
 -- | Create a 'CompilerArgs' and collect the compiler args specified by 'Spec'.
 fromSpec :: Spec -> CompilerArgs
-fromSpec spec =
-   case Spec.sections spec of
-        S.Sections sections ->
-           absolutePaths $ foldl' collectFromSection defaultCompilerArgs sections
-
-        S.AllSections ->
-           absolutePaths $ collectFields buildInfos defaultCompilerArgs
-
+fromSpec spec = absolutePaths $ foldl' collectFromSection defaultCompilerArgs (Spec.sections spec)
    where
       absolutePaths cargs
          | Spec.relativePaths spec
@@ -102,45 +96,47 @@ fromSpec spec =
             cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
 
       collectFromSection cargs section =
-         collectFields (buildInfosOf section) cargs
+         foldl' addCarg cargs (Spec.fields spec)
+         where
+            addCarg cargs F.Package_Db  =
+               cargs & packageDBL .~ Spec.packageDB spec
 
-      collectFields buildInfos cargs =
-        foldl' (addCarg buildInfos) cargs (Spec.fields spec)
-        where
-           addCarg _ cargs F.Package_Db  =
-              cargs & packageDBL .~ Spec.packageDB spec
+            addCarg cargs F.Autogen_Hs_Source_Dirs
+               | Just distDir <- Spec.distDir spec
+               = cargs & autogenHsSourceDirsL .~ [distDir ++ "/build/autogen"]
 
-           addCarg _ cargs F.Autogen_Hs_Source_Dirs
-              | Just distDir <- Spec.distDir spec
-              = cargs & autogenHsSourceDirsL .~ [distDir ++ "/build/autogen"]
+               | otherwise
+               = cargs
 
-              | otherwise
-              = cargs
+            addCarg cargs F.Autogen_Include_Dirs
+               | Just distDir <- Spec.distDir spec
+               = cargs & autogenIncludeDirsL .~ [distDir ++ "/build/autogen"]
 
-           addCarg _ cargs F.Autogen_Include_Dirs
-              | Just distDir <- Spec.distDir spec
-              = cargs & autogenIncludeDirsL .~ [distDir ++ "/build/autogen"]
+               | otherwise
+               = cargs
 
-              | otherwise
-              = cargs
+            addCarg cargs F.Autogen_Includes
+               | Just _ <- Spec.distDir spec
+               = cargs & autogenIncludesL .~ ["cabal_macros.h"]
 
-           addCarg _ cargs F.Autogen_Includes
-              | Just _ <- Spec.distDir spec
-              = cargs & autogenIncludesL .~ ["cabal_macros.h"]
+               | otherwise
+               = cargs
 
-              | otherwise
-              = cargs
+            addCarg cargs F.Hdevtools_Socket =
+               cargs & hdevtoolsSocketL .~ Just ".hdevtools.sock"
 
-           addCarg _ cargs F.Hdevtools_Socket =
-              cargs & hdevtoolsSocketL .~ Just ".hdevtools.sock"
+            addCarg cargs F.Build_Depends =
+               cargs & buildDependsL %~ nub . (++ dependencies) 
 
-           addCarg buildInfos cargs field =
-              cargs & (fieldL field) %~ nub . (++ buildInfoFields)
-              where
-                 buildInfoFields = concat $ map (^. B.field field) buildInfos
+            addCarg cargs field =
+               cargs & fieldL field %~ nub . (++ buildInfoFields)
+               where
+                  buildInfoFields = concatMap (^. B.field field) buildInfos
 
-      buildInfos           = B.buildInfos (Spec.condVars spec) (Spec.cabalPackage spec)
-      buildInfosOf section = B.buildInfosOf section (Spec.condVars spec) (Spec.cabalPackage spec)
+            dependencies = pkgDescrp ^.. CL.dependencyIf condVars section . CL.depPackageName . CL.pkgNameString
+            buildInfos   = pkgDescrp ^.. CL.buildInfoIf condVars section
+            pkgDescrp    = Spec.pkgDescrp spec
+            condVars     = Spec.condVars spec
 
 
 fieldL :: F.Field -> Lens' CompilerArgs [String]
@@ -157,11 +153,15 @@ fieldL F.Ld_Options             = ldOptionsL
 fieldL F.Include_Dirs           = includeDirsL
 fieldL F.Includes               = includesL
 fieldL F.Build_Depends          = buildDependsL
-fieldL F.Package_Db             = error $ "Unexpected field Package_Db for CabalCargs.CompilerArgs.fieldL!"
+fieldL F.Package_Db             = packageDBL . maybeToListL
 fieldL F.Autogen_Hs_Source_Dirs = autogenHsSourceDirsL
 fieldL F.Autogen_Include_Dirs   = autogenIncludeDirsL
 fieldL F.Autogen_Includes       = autogenIncludesL
-fieldL F.Hdevtools_Socket       = error $ "Unexpected field Hdevtools_Socket for CabalCargs.CompilerArgs.fieldL!"
+fieldL F.Hdevtools_Socket       = hdevtoolsSocketL . maybeToListL
+
+
+maybeToListL :: Iso' (Maybe a) [a]
+maybeToListL = iso maybeToList listToMaybe
 
 
 defaultCompilerArgs :: CompilerArgs

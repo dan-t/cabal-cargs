@@ -39,11 +39,12 @@ library
                    transformers >=0.3.0.0 && <0.4, either >=4.1.1 && <4.2,
                    text >=1.1.0.1 && <1.2, system-filepath >=0.4.9 && <0.5,
                    system-fileio >=0.3.12 && <0.4, unordered-containers >=0.2.3.3 && <0.3,
-                   Cabal >=1.16 && <1.19
+                   cabal-lenses >=0.1 && <0.2, Cabal >=1.16 && <1.21
     exposed-modules: CabalCargs.Args CabalCargs.Fields
                      CabalCargs.Formatting CabalCargs.Format CabalCargs.Spec
-                     CabalCargs.Sections CabalCargs.CompilerArgs CabalCargs.BuildInfo
-                     CabalCargs.CondVars
+                     CabalCargs.CompilerArgs
+    other-modules:
+        CabalCargs.BuildInfo
     exposed: True
     buildable: True
     cpp-options: -DCABAL
