@@ -22,7 +22,7 @@ format Ghc cargs = concat [ formatHsSourceDirs $ hsSourceDirs cargs
                           , formatIncludeDirs $ includeDirs cargs
                           , formatIncludes $ includes cargs
                           , formatBuildDepends $ buildDepends cargs
-                          , maybe [] (\db -> ["-package-conf=" ++ db]) (packageDB cargs)
+                          , maybe [] (\db -> ["-package-db=" ++ db]) (packageDB cargs)
                           , formatHsSourceDirs $ autogenHsSourceDirs cargs
                           , formatIncludeDirs $ autogenIncludeDirs cargs
                           , formatIncludes $ autogenIncludes cargs
