@@ -133,7 +133,7 @@ fromSpec spec = absolutePaths $ foldl' collectFromSection defaultCompilerArgs (S
                where
                   buildInfoFields = concatMap (^. B.field field) buildInfos
 
-            dependencies = pkgDescrp ^.. CL.dependencyIf condVars section . CL.depPackageName . CL.pkgNameString
+            dependencies = pkgDescrp ^.. CL.dependencyIf condVars section . CL.packageName . _Wrapped
             buildInfos   = pkgDescrp ^.. CL.buildInfoIf condVars section
             pkgDescrp    = Spec.pkgDescrp spec
             condVars     = Spec.condVars spec
