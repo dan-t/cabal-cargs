@@ -1,3 +1,7 @@
+0.7.6
+-----
+* Raise upper bounds of lens and Cabal libs
+
 0.7.4, 0.7.5
 ------------
 * Raise upper bounds of dependencies
