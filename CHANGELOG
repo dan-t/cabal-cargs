@@ -1,3 +1,7 @@
+0.7.7
+-----
+* Support GHC 7.10.1
+
 0.7.6
 -----
 * Raise upper bounds of lens and Cabal libs
