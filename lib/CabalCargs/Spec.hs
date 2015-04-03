@@ -1,4 +1,4 @@
-{-# Language PatternGuards #-}
+{-# Language PatternGuards, CPP #-}
 
 module CabalCargs.Spec
    ( Spec(..)
@@ -16,7 +16,6 @@ import qualified System.IO.Strict as Strict
 import Control.Monad.Trans.Either (EitherT, left, right, runEitherT)
 import Control.Monad.IO.Class
 import Control.Monad (filterM)
-import Control.Applicative ((<$>))
 import Control.Lens
 import System.Directory (getCurrentDirectory)
 import qualified Filesystem.Path.CurrentOS as FP
@@ -26,6 +25,10 @@ import qualified Data.Text as T
 import Data.List (find, isPrefixOf, (\\))
 import qualified Data.List as L
 import Data.Maybe (isJust)
+
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative ((<$>))
+#endif
 
 
 -- | Specifies which compiler args from which sections should be collected.

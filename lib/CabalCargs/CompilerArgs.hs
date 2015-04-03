@@ -1,4 +1,4 @@
-{-# Language PatternGuards, TemplateHaskell, Rank2Types #-}
+{-# Language PatternGuards, TemplateHaskell, Rank2Types, CPP #-}
 
 module CabalCargs.CompilerArgs
    ( CompilerArgs(..)
@@ -14,10 +14,13 @@ import qualified CabalCargs.BuildInfo as B
 import qualified CabalLenses as CL
 import Data.List (nub, foldl')
 import Data.Maybe (maybeToList, listToMaybe)
-import Control.Applicative ((<$>))
 import Control.Lens
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path ((</>))
+
+#if __GLASGOW_HASKELL__ < 710
+import Control.Applicative ((<$>))
+#endif
 
 
 -- | The collected compiler args from the cabal file. Till the field 'packageDB'
