@@ -15,14 +15,12 @@ import qualified CabalLenses as CL
 import qualified System.IO.Strict as Strict
 import Control.Monad.Trans.Either (EitherT, left, right, runEitherT)
 import Control.Monad.IO.Class
-import Control.Monad (filterM)
 import Control.Lens
 import System.Directory (getCurrentDirectory)
 import qualified Filesystem.Path.CurrentOS as FP
 import Filesystem.Path.CurrentOS ((</>))
 import qualified Filesystem as FS
-import qualified Data.Text as T
-import Data.List (find, isPrefixOf, (\\))
+import Data.List ((\\))
 import qualified Data.List as L
 import Data.Maybe (isJust)
 
@@ -32,7 +30,7 @@ import Control.Applicative ((<$>))
 
 
 -- | Specifies which compiler args from which sections should be collected.
-data Spec = Spec 
+data Spec = Spec
    { sections      :: [CL.Section]              -- ^ the sections used for collecting the compiler args
    , fields        :: F.Fields                  -- ^ for these fields compiler args are collected
    , condVars      :: CL.CondVars               -- ^ used for the evaluation of the conditional fields in the cabal file
@@ -47,7 +45,7 @@ data Spec = Spec
 type Error = String
 
 io :: MonadIO m => IO a -> m a
-io = liftIO 
+io = liftIO
 
 
 -- | Create a 'Spec' by the command line arguments given to 'cabal-cargs'.
@@ -78,7 +76,7 @@ fromCmdArgs args
 
    | otherwise = runEitherT $ do
       curDir    <- io getCurrentDirectory
-      cabalFile <- findCabalFile curDir
+      cabalFile <- CL.findCabalFile curDir
       spec      <- fromCabalFile cabalFile
       right $ applyCondVars $ spec { sections      = sections_ args (pkgDescrp spec)
                                    , fields        = fields_ args
@@ -97,8 +95,8 @@ fromCmdArgs args
 fromCabalFile :: FilePath -> EitherT Error IO Spec
 fromCabalFile file = do
    pkgDescrp <- packageDescription file
-   pkgDB     <- findPackageDB file
-   distDir   <- io $ findDistDir file
+   pkgDB     <- CL.findPackageDB file
+   distDir   <- io $ CL.findDistDir file
    absFile   <- FP.encodeString <$> io (absoluteFile file)
    right $ Spec
       { sections      = CL.allSections pkgDescrp
@@ -124,9 +122,9 @@ fromCabalFile file = do
 --   the path to its package database is also returned.
 fromSourceFile :: FilePath -> EitherT Error IO Spec
 fromSourceFile file = do
-   cabalFile   <- findCabalFile file
-   pkgDB       <- findPackageDB cabalFile
-   distDir     <- io $ findDistDir cabalFile
+   cabalFile   <- CL.findCabalFile file
+   pkgDB       <- CL.findPackageDB cabalFile
+   distDir     <- io $ CL.findDistDir cabalFile
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
    right $ Spec
@@ -197,7 +195,7 @@ findSections :: FilePath -> FilePath -> GenericPackageDescription -> IO [CL.Sect
 findSections srcFile cabalFile pkgDescrp = do
    absSrcFile <- absoluteFile srcFile
    cabalDir   <- absoluteDirectory cabalFile
-   let sections = filter (fittingSection absSrcFile cabalDir) (allHsSourceDirs pkgDescrp)   
+   let sections = filter (fittingSection absSrcFile cabalDir) (allHsSourceDirs pkgDescrp)
    return $ map fst sections
 
    where
@@ -220,90 +218,6 @@ allHsSourceDirs pkgDescrp = zip sections hsSourceDirs
             condVars = CL.fromDefaults pkgDescrp
 
 
-
--- | Find a cabal file starting at the given directory, going upwards the directory
---   tree until a cabal file could be found. The returned file path is absolute.
-findCabalFile :: FilePath -> EitherT Error IO FilePath
-findCabalFile file = do
-   cabalFile <- io $ do
-      dir <- absoluteDirectory file
-      findCabalFile' dir
-
-   if cabalFile == FP.empty
-      then left "Couldn't find Cabal file!"
-      else right . FP.encodeString $ cabalFile
-
-   where
-      findCabalFile' dir = do
-         files <- filterM FS.isFile =<< (FS.listDirectory dir)
-         case find isCabalFile files of
-              Just file -> return $ dir </> file
-              _         -> do
-                 let parent = FP.parent dir
-                 if parent == dir
-                    then return FP.empty
-                    else findCabalFile' parent
-
-      isCabalFile file
-         | Just ext <- FP.extension file
-         = ext == cabalExt
-
-         | otherwise
-         = False
-
-      cabalExt = T.pack "cabal"
-
-
--- | Find the package database of the cabal sandbox from the given cabal file.
---   The returned file path is relative to the directory of the cabal file.
-findPackageDB :: FilePath -> EitherT Error IO (Maybe FilePath)
-findPackageDB cabalFile = do
-   cabalDir <- io $ absoluteDirectory cabalFile
-   let sandboxConfig = cabalDir </> sandbox_config
-   isFile   <- io $ FS.isFile sandboxConfig
-   if isFile
-      then do
-         packageDB <- io $ readPackageDB sandboxConfig
-         case packageDB of
-              Just db -> right . Just $ stripPrefix cabalDir db
-              _       -> left $ "Couldn't find field 'package-db: ' in " ++ (show sandboxConfig)
-      else
-         right Nothing
-
-   where
-      -- | reads the 'package-db: ' field from the sandbox config file and returns the value of the field
-      readPackageDB :: FP.FilePath -> IO (Maybe FP.FilePath)
-      readPackageDB sandboxConfig = do
-         lines <- lines <$> Strict.readFile (FP.encodeString sandboxConfig)
-         return $ do
-            line      <- find (package_db `L.isPrefixOf`) lines
-            packageDB <- L.stripPrefix package_db line
-            return $ FP.decodeString packageDB
-
-      sandbox_config = FP.decodeString "cabal.sandbox.config"
-      package_db     = "package-db: "
-
-
--- | Find the dist directory of the cabal build from the given cabal file. For a non sandboxed
---   build it's just the directory 'dist' in the cabal build directory. For a sandboxed build
---   it's the directory 'dist/dist-sandbox-*'. The returned file path is relative to the
---   directory of the cabal file.
-findDistDir :: FilePath -> IO (Maybe FilePath)
-findDistDir cabalFile = do
-   cabalDir   <- absoluteDirectory cabalFile
-   let distDir = cabalDir </> FP.decodeString "dist"
-   hasDistDir <- FS.isDirectory distDir
-   if hasDistDir
-      then do
-         files <- filterM FS.isDirectory =<< (FS.listDirectory distDir)
-         return $ (stripPrefix cabalDir) <$> maybe (Just distDir) Just (find isSandboxDistDir files)
-      else return Nothing
-
-   where
-      isSandboxDistDir file =
-         "dist-sandbox-" `isPrefixOf` (FP.encodeString . FP.filename $ file)
-
-
 absoluteDirectory :: FilePath -> IO FP.FilePath
 absoluteDirectory file = do
    absFile <- absoluteFile file
@@ -315,15 +229,6 @@ absoluteDirectory file = do
 
 absoluteFile :: FilePath -> IO FP.FilePath
 absoluteFile = FS.canonicalizePath . FP.decodeString
-
-
-stripPrefix :: FP.FilePath -> FP.FilePath -> FilePath
-stripPrefix prefix file
-   | Just stripped <- FP.stripPrefix prefix file
-   = FP.encodeString stripped
-
-   | otherwise
-   = FP.encodeString file
 
 
 combineSections :: (Args, GenericPackageDescription) -> [CL.Section] -> [CL.Section]
