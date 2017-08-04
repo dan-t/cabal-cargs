@@ -1,3 +1,8 @@
+0.8.0
+-----
+* Better handling of ghc databases, by ensuring that only the global database
+  and the cabal sandbox database are available.
+
 0.7.10
 ------
 * Raise upper bounds of dependencies
