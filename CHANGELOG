@@ -1,3 +1,7 @@
+0.8.1
+-----
+* Fix tests
+
 0.8.0
 -----
 * Better handling of ghc databases, by ensuring that only the global database
