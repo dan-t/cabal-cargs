@@ -26,7 +26,7 @@ import Control.Applicative ((<$>))
 -- | The collected compiler args from the cabal file. Till the field 'packageDB'
 --   all fields represent the equaliy named fields ('-' replaced by CamelCase)
 --   from the cabal file.
-data CompilerArgs = CompilerArgs 
+data CompilerArgs = CompilerArgs
    { hsSourceDirs        :: [FilePath]
    , ghcOptions          :: [String]
    , defaultExtensions   :: [String]
@@ -79,24 +79,25 @@ fromCmdArgs args = (fromSpec <$>) <$> Spec.fromCmdArgs args
 
 -- | Create a 'CompilerArgs' and collect the compiler args specified by 'Spec'.
 fromSpec :: Spec -> CompilerArgs
-fromSpec spec = absolutePaths $ foldl' collectFromSection defaultCompilerArgs (Spec.sections spec)
+fromSpec spec = changePaths $ foldl' collectFromSection defaultCompilerArgs (Spec.sections spec)
    where
-      absolutePaths cargs
+      changePaths cargs
          | Spec.relativePaths spec
-         = cargs
+         = cargs & hsSourceDirsL            %~ map stripCabalDir
+                 & cSourcesL                %~ map stripCabalDir
+                 & extraLibDirsL            %~ map stripCabalDir
+                 & includeDirsL             %~ map stripCabalDir
+                 & autogenHsSourceDirsL     %~ map stripCabalDir
+                 & autogenIncludeDirsL      %~ map stripCabalDir
+                 & packageDBL . _Just       %~ stripCabalDir
+                 & hdevtoolsSocketL . _Just %~ stripCabalDir
 
          | otherwise
-         = cargs & hsSourceDirsL            %~ map prependCabalDir
-                 & cSourcesL                %~ map prependCabalDir
-                 & extraLibDirsL            %~ map prependCabalDir
-                 & includeDirsL             %~ map prependCabalDir
-                 & autogenHsSourceDirsL     %~ map prependCabalDir
-                 & autogenIncludeDirsL      %~ map prependCabalDir
-                 & packageDBL . _Just       %~ prependCabalDir
-                 & hdevtoolsSocketL . _Just %~ prependCabalDir
+         = cargs
+
          where
-            prependCabalDir path = FP.encodeString $ cabalDir </> FP.decodeString path
-            cabalDir             = FP.directory . FP.decodeString $ Spec.cabalFile spec
+            stripCabalDir path = maybe path FP.encodeString (FP.stripPrefix cabalDir (FP.decodeString path))
+            cabalDir           = FP.directory . FP.decodeString $ Spec.cabalFile spec
 
       collectFromSection cargs section =
          foldl' addCarg cargs (Spec.fields spec)
@@ -129,7 +130,7 @@ fromSpec spec = absolutePaths $ foldl' collectFromSection defaultCompilerArgs (S
                cargs & hdevtoolsSocketL .~ Just ".hdevtools.sock"
 
             addCarg cargs F.Build_Depends =
-               cargs & buildDependsL %~ nub . (++ dependencies) 
+               cargs & buildDependsL %~ nub . (++ dependencies)
 
             addCarg cargs field =
                cargs & fieldL field %~ nub . (++ buildInfoFields)

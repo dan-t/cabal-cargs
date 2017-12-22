@@ -36,8 +36,8 @@ data Spec = Spec
    , condVars      :: CL.CondVars               -- ^ used for the evaluation of the conditional fields in the cabal file
    , pkgDescrp     :: GenericPackageDescription -- ^ the package description of the read in cabal file
    , cabalFile     :: FilePath                  -- ^ the cabal file read from
-   , distDir       :: Maybe FilePath            -- ^ the dist directory of the cabal build, a relative path to the directory of the cabal file
-   , packageDB     :: Maybe FilePath            -- ^ the directory of package database of the cabal sandbox, a relative path to the directory of the cabal file
+   , distDir       :: Maybe FilePath            -- ^ the dist directory of the cabal build
+   , packageDB     :: Maybe FilePath            -- ^ the directory of package database of the cabal sandbox
    , relativePaths :: Bool                      -- ^ if all returned paths are relative to the directory of the cabal file, otherwise all paths are absolute
    }
 

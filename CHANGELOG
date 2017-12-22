@@ -1,3 +1,7 @@
+0.8.2
+-----
+* Update to cabal-lenses-0.5.0
+
 0.8.1
 -----
 * Fix tests
