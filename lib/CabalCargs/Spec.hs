@@ -6,7 +6,7 @@ module CabalCargs.Spec
    ) where
 
 import Distribution.PackageDescription (GenericPackageDescription)
-import Distribution.PackageDescription.Parse (parsePackageDescription, ParseResult(..))
+import Distribution.PackageDescription.Parse (parseGenericPackageDescription, ParseResult(..))
 import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)
 import qualified CabalCargs.Args as A
@@ -182,7 +182,7 @@ applyArch (A.Args { A.arch = arch }) spec
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
 packageDescription file = do
    contents <- io $ Strict.readFile file
-   case parsePackageDescription contents of
+   case parseGenericPackageDescription contents of
         ParseFailed error   -> left $ show error
         ParseOk _ pkgDescrp -> right pkgDescrp
 
