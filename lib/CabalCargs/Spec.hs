@@ -6,13 +6,13 @@ module CabalCargs.Spec
    ) where
 
 import Distribution.PackageDescription (GenericPackageDescription)
-import Distribution.PackageDescription.Parse (parseGenericPackageDescription, ParseResult(..))
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, runParseResult, ParseResult(..))
+import Distribution.Parsec.Common (PWarning)
 import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)
 import qualified CabalCargs.Args as A
 import qualified CabalCargs.Fields as F
 import qualified CabalLenses as CL
-import qualified System.IO.Strict as Strict
 import Control.Monad.Trans.Either (EitherT, left, right, runEitherT)
 import Control.Monad.IO.Class
 import Control.Lens
@@ -23,6 +23,7 @@ import qualified Filesystem as FS
 import Data.List ((\\))
 import qualified Data.List as L
 import Data.Maybe (isJust)
+import qualified Data.ByteString as BS
 
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>))
@@ -181,10 +182,17 @@ applyArch (A.Args { A.arch = arch }) spec
 
 packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
 packageDescription file = do
-   contents <- io $ Strict.readFile file
-   case parseGenericPackageDescription contents of
-        ParseFailed error   -> left $ show error
-        ParseOk _ pkgDescrp -> right pkgDescrp
+   contents <- io $ BS.readFile file
+   let (warnings, result) = runParseResult $ parseGenericPackageDescription contents
+   io $ showWarnings warnings
+   case result of
+        Left (_, errors) -> left $ show errors
+        Right pkgDescrp  -> right pkgDescrp
+
+   where
+      showWarnings :: [PWarning] -> IO ()
+      showWarnings [] = return ()
+      showWarnings ws = putStrLn $ "cabal-cargs: " ++ (L.intercalate ", " $ map show ws)
 
 
 -- | Find matching sections in the package description for the given source file.
