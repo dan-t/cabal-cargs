@@ -1,5 +1,5 @@
 name: cabal-cargs
-version: 0.9.0
+version: 0.9.1
 cabal-version: >=1.9.2
 build-type: Simple
 license: BSD3
@@ -11,7 +11,7 @@ description:
 category: Utils, Development
 author: Daniel Trstenjak
 tested-with: GHC ==7.6.2 GHC ==7.6.3 GHC ==7.8.3 GHC ==7.10.1
-             GHC ==8.0.1 GHC ==8.2.1
+             GHC ==8.0.1 GHC ==8.2.1 GHC ==8.4.2
 extra-source-files:
     README.md
     CHANGELOG
