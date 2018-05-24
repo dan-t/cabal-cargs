@@ -13,7 +13,7 @@ import CabalCargs.Args (Args)
 import qualified CabalCargs.Args as A
 import qualified CabalCargs.Fields as F
 import qualified CabalLenses as CL
-import Control.Monad.Trans.Either (EitherT, left, right, runEitherT)
+import Control.Monad.Trans.Except (ExceptT, throwE, runExceptT)
 import Control.Monad.IO.Class
 import Control.Lens
 import System.Directory (getCurrentDirectory)
@@ -57,32 +57,32 @@ io = liftIO
 --   and a source file have been given.
 fromCmdArgs :: Args -> IO (Either Error Spec)
 fromCmdArgs args
-   | Just cabalFile <- A.cabalFile args = runEitherT $ do
+   | Just cabalFile <- A.cabalFile args = runExceptT $ do
       spec        <- fromCabalFile cabalFile
       srcSections <- io $ case A.sourceFile args of
                                Just srcFile -> findSections srcFile cabalFile (pkgDescrp spec)
                                _            -> return []
 
-      right $ applyCondVars $ spec { sections      = combineSections (args, pkgDescrp spec) srcSections
-                                   , fields        = fields_ args
-                                   , relativePaths = A.relative args
-                                   }
+      return $ applyCondVars $ spec { sections      = combineSections (args, pkgDescrp spec) srcSections
+                                    , fields        = fields_ args
+                                    , relativePaths = A.relative args
+                                    }
 
-   | Just sourceFile <- A.sourceFile args = runEitherT $ do
+   | Just sourceFile <- A.sourceFile args = runExceptT $ do
       spec <- fromSourceFile sourceFile
-      right $ applyCondVars $ spec { sections      = combineSections (args, pkgDescrp spec) (sections spec)
-                                   , fields        = fields_ args
-                                   , relativePaths = A.relative args
-                                   }
+      return $ applyCondVars $ spec { sections      = combineSections (args, pkgDescrp spec) (sections spec)
+                                    , fields        = fields_ args
+                                    , relativePaths = A.relative args
+                                    }
 
-   | otherwise = runEitherT $ do
+   | otherwise = runExceptT $ do
       curDir    <- io getCurrentDirectory
       cabalFile <- CL.findCabalFile curDir
       spec      <- fromCabalFile cabalFile
-      right $ applyCondVars $ spec { sections      = sections_ args (pkgDescrp spec)
-                                   , fields        = fields_ args
-                                   , relativePaths = A.relative args
-                                   }
+      return $ applyCondVars $ spec { sections      = sections_ args (pkgDescrp spec)
+                                    , fields        = fields_ args
+                                    , relativePaths = A.relative args
+                                    }
 
    where
       applyCondVars = applyFlags args . applyOS args . applyArch args
@@ -93,13 +93,13 @@ fromCmdArgs args
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
-fromCabalFile :: FilePath -> EitherT Error IO Spec
+fromCabalFile :: FilePath -> ExceptT Error IO Spec
 fromCabalFile file = do
    pkgDescrp <- packageDescription file
    pkgDB     <- CL.findPackageDB file
    distDir   <- io $ CL.findDistDir file
    absFile   <- FP.encodeString <$> io (absoluteFile file)
-   right $ Spec
+   return $ Spec
       { sections      = CL.allSections pkgDescrp
       , fields        = F.allFields
       , condVars      = CL.fromDefaults pkgDescrp
@@ -121,14 +121,14 @@ fromCabalFile file = do
 --
 --   If a cabal sandbox is present in the directory of the cabal file, then
 --   the path to its package database is also returned.
-fromSourceFile :: FilePath -> EitherT Error IO Spec
+fromSourceFile :: FilePath -> ExceptT Error IO Spec
 fromSourceFile file = do
    cabalFile   <- CL.findCabalFile file
    pkgDB       <- CL.findPackageDB cabalFile
    distDir     <- io $ CL.findDistDir cabalFile
    pkgDescrp   <- packageDescription cabalFile
    srcSections <- io $ findSections file cabalFile pkgDescrp
-   right $ Spec
+   return $ Spec
       { sections      = srcSections
       , fields        = F.allFields
       , condVars      = CL.fromDefaults pkgDescrp
@@ -180,14 +180,14 @@ applyArch (A.Args { A.arch = arch }) spec
       setArch name = spec { condVars = (condVars spec) { CL.arch = name } }
 
 
-packageDescription :: FilePath -> EitherT Error IO GenericPackageDescription
+packageDescription :: FilePath -> ExceptT Error IO GenericPackageDescription
 packageDescription file = do
    contents <- io $ BS.readFile file
    let (warnings, result) = runParseResult $ parseGenericPackageDescription contents
    io $ showWarnings warnings
    case result of
-        Left (_, errors) -> left $ show errors
-        Right pkgDescrp  -> right pkgDescrp
+        Left (_, errors) -> throwE $ show errors
+        Right pkgDescrp  -> return pkgDescrp
 
    where
       showWarnings :: [PWarning] -> IO ()
