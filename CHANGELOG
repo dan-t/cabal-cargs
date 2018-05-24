@@ -1,3 +1,7 @@
+1.0.0
+-----
+* Migrate from EitherT to ExceptT
+
 0.9.1
 -----
 * Support Cabal 2.2
