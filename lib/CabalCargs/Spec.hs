@@ -6,7 +6,7 @@ module CabalCargs.Spec
    ) where
 
 import Distribution.PackageDescription (GenericPackageDescription)
-import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, runParseResult, ParseResult(..))
+import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, runParseResult)
 import Distribution.Parsec.Common (PWarning)
 import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)

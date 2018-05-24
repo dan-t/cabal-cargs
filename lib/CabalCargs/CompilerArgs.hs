@@ -16,7 +16,6 @@ import Data.List (nub, foldl')
 import Data.Maybe (maybeToList, listToMaybe)
 import Control.Lens
 import qualified Filesystem.Path.CurrentOS as FP
-import Filesystem.Path ((</>))
 
 #if __GLASGOW_HASKELL__ < 710
 import Control.Applicative ((<$>))
