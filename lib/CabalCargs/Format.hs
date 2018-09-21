@@ -60,6 +60,7 @@ format Pure cargs = concat [ hsSourceDirs cargs
                            , includes cargs
                            , buildDepends cargs
                            , maybeToList $ packageDB cargs
+                           , maybeToList $ rootDir cargs
                            , autogenHsSourceDirs cargs
                            , autogenIncludeDirs cargs
                            , autogenIncludes cargs

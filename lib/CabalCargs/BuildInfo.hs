@@ -28,6 +28,7 @@ field F.Include_Dirs           = CL.includeDirsL
 field F.Includes               = CL.includesL
 field F.Build_Depends          = nopLens
 field F.Package_Db             = nopLens
+field F.Root_Dir               = nopLens
 field F.Autogen_Hs_Source_Dirs = nopLens
 field F.Autogen_Include_Dirs   = nopLens
 field F.Autogen_Includes       = nopLens
