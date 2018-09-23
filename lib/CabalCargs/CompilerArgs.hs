@@ -15,6 +15,7 @@ import qualified CabalLenses as CL
 import Data.List (nub, foldl')
 import Data.Maybe (maybeToList, listToMaybe)
 import Control.Lens
+import System.FilePath (takeDirectory)
 import qualified Filesystem.Path.CurrentOS as FP
 
 #if __GLASGOW_HASKELL__ < 710
@@ -40,6 +41,7 @@ data CompilerArgs = CompilerArgs
    , includes            :: [String]
    , buildDepends        :: [String]
    , packageDB           :: Maybe FilePath -- ^ the path to the package database of the cabal sandbox
+   , rootDir             :: Maybe FilePath -- ^ the root directory of the cabal package
    , autogenHsSourceDirs :: [FilePath]     -- ^ dirs of automatically generated haskell source files by cabal (e.g. Paths_*)
    , autogenIncludeDirs  :: [FilePath]     -- ^ dirs of automatically generated include files by cabal
    , autogenIncludes     :: [String]       -- ^ automatically generated include files by cabal (e.g. cabal_macros.h)
@@ -66,6 +68,7 @@ makeLensesFor [ ("hsSourceDirs"       , "hsSourceDirsL")
               , ("autogenIncludeDirs" , "autogenIncludeDirsL")
               , ("autogenIncludes"    , "autogenIncludesL")
               , ("hdevtoolsSocket"    , "hdevtoolsSocketL")
+              , ("rootDir"            , "rootDirL")
               ] ''CompilerArgs
 
 type Error = String
@@ -103,6 +106,9 @@ fromSpec spec = changePaths $ foldl' collectFromSection defaultCompilerArgs (Spe
          where
             addCarg cargs F.Package_Db  =
                cargs & packageDBL .~ Spec.packageDB spec
+
+            addCarg cargs F.Root_Dir =
+               cargs & rootDirL .~ Just (takeDirectory $ Spec.cabalFile spec)
 
             addCarg cargs F.Autogen_Hs_Source_Dirs
                | Just distDir <- Spec.distDir spec
@@ -157,6 +163,7 @@ fieldL F.Include_Dirs           = includeDirsL
 fieldL F.Includes               = includesL
 fieldL F.Build_Depends          = buildDependsL
 fieldL F.Package_Db             = packageDBL . maybeToListL
+fieldL F.Root_Dir               = rootDirL . maybeToListL
 fieldL F.Autogen_Hs_Source_Dirs = autogenHsSourceDirsL
 fieldL F.Autogen_Include_Dirs   = autogenIncludeDirsL
 fieldL F.Autogen_Includes       = autogenIncludesL
@@ -187,4 +194,5 @@ defaultCompilerArgs = CompilerArgs
    , autogenIncludeDirs  = []
    , autogenIncludes     = []
    , hdevtoolsSocket     = Nothing
+   , rootDir             = Nothing
    }

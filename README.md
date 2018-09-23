@@ -114,6 +114,7 @@ Currently supported cabal fields are:
 
 There are further some special fields:
 * `package_db`
+* `root_dir`
 * `autogen_hs_source_dirs`
 * `autogen_include_dirs`
 * `autogen_includes`
