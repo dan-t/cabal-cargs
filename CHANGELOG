@@ -1,3 +1,7 @@
+1.1.0
+-----
+* New field 'root_dir' to output the root directory of the cabal project
+
 1.0.0
 -----
 * Migrate from EitherT to ExceptT
