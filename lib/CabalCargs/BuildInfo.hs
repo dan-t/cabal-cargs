@@ -5,7 +5,7 @@ module CabalCargs.BuildInfo
    ) where
 
 import Distribution.PackageDescription (BuildInfo(..))
-import Distribution.Compiler (CompilerFlavor(..))
+import Distribution.Compiler (PerCompilerFlavor(..))
 import Control.Lens
 import qualified CabalCargs.Fields as F
 import qualified CabalLenses as CL
@@ -15,7 +15,7 @@ import Language.Haskell.Extension (Extension(..), KnownExtension(..), Language(.
 -- | A lens from a 'BuildInfo' to a list of stringified field entries of the 'BuildInfo'.
 field :: F.Field -> Traversal' BuildInfo [String]
 field F.Hs_Source_Dirs         = CL.hsSourceDirsL
-field F.Ghc_Options            = CL.optionsL . traversed . filtered ((== GHC) . fst) . _2
+field F.Ghc_Options            = CL.optionsL . ghcOptionsL
 field F.Default_Extensions     = oldAndDefaultExtensionsL . extsToStrings
 field F.Default_Language       = CL.defaultLanguageL . langToString
 field F.Cpp_Options            = CL.cppOptionsL
@@ -50,7 +50,7 @@ oldAndDefaultExtensionsL = lens getter setter
 extsToStrings :: Iso' [Extension] [String]
 extsToStrings = iso (map toString) (map toExt)
    where
-      toString ext = 
+      toString ext =
          case ext of
               EnableExtension knownExt    -> show knownExt
               DisableExtension knownExt   -> "No" ++ show knownExt
@@ -93,3 +93,11 @@ langToString = iso toString toLang
 --   list and doesn't modify the given BuildInfo.
 nopLens :: Lens' BuildInfo [String]
 nopLens = lens (const []) const
+
+
+-- | A lens that accesses the ghc options of the PerCompilerFlavor
+ghcOptionsL :: Lens' (PerCompilerFlavor [String]) [String]
+ghcOptionsL = lens getter setter
+   where
+      getter (PerCompilerFlavor ghcOpts _)           = ghcOpts
+      setter (PerCompilerFlavor _ ghcjsOpts) ghcOpts = PerCompilerFlavor ghcOpts ghcjsOpts

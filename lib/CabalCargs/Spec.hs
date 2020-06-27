@@ -7,7 +7,7 @@ module CabalCargs.Spec
 
 import Distribution.PackageDescription (GenericPackageDescription)
 import Distribution.PackageDescription.Parsec (parseGenericPackageDescription, runParseResult)
-import Distribution.Parsec.Common (PWarning)
+import Distribution.Parsec.Warning (PWarning)
 import qualified Distribution.System as Sys
 import CabalCargs.Args (Args)
 import qualified CabalCargs.Args as A
