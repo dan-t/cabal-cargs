@@ -14,7 +14,7 @@ import Language.Haskell.Extension (Extension(..), KnownExtension(..), Language(.
 
 -- | A lens from a 'BuildInfo' to a list of stringified field entries of the 'BuildInfo'.
 field :: F.Field -> Traversal' BuildInfo [String]
-field F.Hs_Source_Dirs         = CL.hsSourceDirsL
+field F.Hs_Source_Dirs         = CL.hsSourceDirsL . CL.symbolicPathListToFilePathList
 field F.Ghc_Options            = CL.optionsL . ghcOptionsL
 field F.Default_Extensions     = oldAndDefaultExtensionsL . extsToStrings
 field F.Default_Language       = CL.defaultLanguageL . langToString
