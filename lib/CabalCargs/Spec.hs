@@ -220,7 +220,7 @@ allHsSourceDirs :: GenericPackageDescription -> [(CL.Section, HsSourceDirs)]
 allHsSourceDirs pkgDescrp = zip sections hsSourceDirs
    where
       sections     = CL.allSections pkgDescrp
-      hsSourceDirs = map (\section -> toFPs $ pkgDescrp ^. CL.buildInfoIf condVars section . CL.hsSourceDirsL . CL.symbolicPathListToFilePathList) sections
+      hsSourceDirs = map (\section -> toFPs $ pkgDescrp ^. CL.buildInfoIf condVars section . CL.hsSourceDirsL . CL.symPathsToFilePaths) sections
          where
             toFPs    = map FP.decodeString
             condVars = CL.fromDefaults pkgDescrp
