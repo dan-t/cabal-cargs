@@ -1,6 +1,6 @@
 cabal-version:      >=1.10.0
 name:               cabal-cargs
-version:            1.5.0
+version:            1.6.0
 license:            BSD3
 license-file:       LICENSE
 maintainer:         daniel.trstenjak@gmail.com
@@ -71,7 +71,7 @@ library
         system-fileio >=0.3.12 && <0.4,
         unordered-containers >=0.2.3.3 && <0.3,
         cabal-lenses >=0.13.0 && <1.0,
-        Cabal >=3.12 && <4.0,
+        Cabal >=3.14 && <4.0,
         bytestring >=0.9 && <0.13
 
 executable cabal-cargs
