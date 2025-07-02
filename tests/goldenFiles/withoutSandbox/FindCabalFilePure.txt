@@ -1,1 +1,1 @@
-lib exe tests -W -DLIB -DEXE base cmdargs lens directory strict transformers either text system-filepath system-fileio Cabal cabal-cargs tasty tasty-golden filepath /home/dan/projekte/cabal-cargs/tests/inputFiles/withoutSandbox dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock
+lib exe tests -W -DLIB -DEXE base cmdargs lens directory strict transformers either text system-filepath system-fileio Cabal cabal-cargs tasty tasty-golden filepath ./ dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock

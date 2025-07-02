@@ -1,1 +1,1 @@
-exe -W -DEXE base cabal-cargs .cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d /home/dan/projekte/cabal-cargs/tests/inputFiles/withSandbox dist/dist-sandbox-6d1acfa0/build/autogen dist/dist-sandbox-6d1acfa0/build/autogen cabal_macros.h .hdevtools.sock
+exe -W -DEXE base cabal-cargs .cabal-sandbox/x86_64-linux-ghc-7.6.2-packages.conf.d ./ dist/dist-sandbox-6d1acfa0/build/autogen dist/dist-sandbox-6d1acfa0/build/autogen cabal_macros.h .hdevtools.sock

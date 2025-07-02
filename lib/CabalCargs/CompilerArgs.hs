@@ -15,7 +15,7 @@ import qualified CabalLenses as CL
 import Data.List (nub, foldl')
 import Data.Maybe (maybeToList, listToMaybe)
 import Control.Lens
-import System.FilePath (takeDirectory)
+import System.FilePath (takeDirectory, pathSeparator)
 import qualified Filesystem.Path.CurrentOS as FP
 
 #if __GLASGOW_HASKELL__ < 710
@@ -92,6 +92,7 @@ fromSpec spec = changePaths $ foldl' collectFromSection defaultCompilerArgs (Spe
                  & autogenHsSourceDirsL     %~ map stripCabalDir
                  & autogenIncludeDirsL      %~ map stripCabalDir
                  & packageDBL . _Just       %~ stripCabalDir
+                 & rootDirL . _Just         .~ ("." ++ [pathSeparator])
                  & hdevtoolsSocketL . _Just %~ stripCabalDir
 
          | otherwise

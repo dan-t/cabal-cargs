@@ -1,1 +1,1 @@
-exe -W -DEXE base cabal-cargs /home/dan/projekte/cabal-cargs/tests/inputFiles/withoutSandbox dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock
+exe -W -DEXE base cabal-cargs ./ dist/build/autogen dist/build/autogen cabal_macros.h .hdevtools.sock

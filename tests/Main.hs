@@ -27,7 +27,7 @@ withSandboxTests = testsWithBaseDir "withSandbox"
 testsWithBaseDir :: FilePath -> T.TestTree
 testsWithBaseDir dir = T.testGroup dir
    [ test dir "FindCabalFile" $ defaultArgs { sourceFile = libDir }
-   , test dir "FromCabalFile" $ defaultArgs { cabalFile = cabalFile } 
+   , test dir "FromCabalFile" $ defaultArgs { cabalFile = cabalFile }
    , test dir "FromLibSrcFile" $ defaultArgs { sourceFile = libSrcFile }
    , test dir "FromExeSrcFile" $ defaultArgs { sourceFile = exeSrcFile }
 
@@ -81,7 +81,7 @@ test dir testName args =
                  hPutStrLn stderr ("cabal-cargs: " ++ error)
 
               Right cargs_ -> do
-                 writeFile outputFile (intercalate " " $ Fmt.format formatting cargs_)
+                 writeFile outputFile $ (intercalate " " $ Fmt.format formatting cargs_) ++ "\n"
 
       diff ref new = ["diff", "-u", ref, new]
       goldenFile   = "tests" </> "goldenFiles" </> dir </> testName <.> "txt"
