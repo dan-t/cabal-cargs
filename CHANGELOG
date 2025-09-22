@@ -1,3 +1,7 @@
+1.8.0
+-----
+* Support ghc 9.10.3
+
 1.7.0
 -----
 * Respect the '--relative' option for Root_Dir field

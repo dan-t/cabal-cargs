@@ -7,7 +7,6 @@ module CabalCargs.Format
 import CabalCargs.CompilerArgs (CompilerArgs(..))
 import CabalCargs.Formatting (Formatting(..))
 import Data.Maybe (maybeToList)
-import Data.List (foldl')
 
 
 format :: Formatting -> CompilerArgs -> [String]

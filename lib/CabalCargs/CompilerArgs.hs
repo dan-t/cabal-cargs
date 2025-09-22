@@ -12,7 +12,7 @@ import qualified CabalCargs.Args as A
 import qualified CabalCargs.Fields as F
 import qualified CabalCargs.BuildInfo as B
 import qualified CabalLenses as CL
-import Data.List (nub, foldl')
+import Data.List (nub)
 import Data.Maybe (maybeToList, listToMaybe)
 import Control.Lens
 import System.FilePath (takeDirectory, pathSeparator)
